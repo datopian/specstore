@@ -1,0 +1,7 @@
+-r requirements.txt
+pylama
+coverage
+coveralls
+pytest
+pytest-cov
+requests-mock==1.3.0

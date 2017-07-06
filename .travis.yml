@@ -1,0 +1,16 @@
+language:
+  python
+
+python:
+  - 3.6
+
+install:
+  - pip install --upgrade -r requirements.dev.txt
+
+script:
+  - export
+  - pylama specstore
+  - python -m pytest tests -sv --cov=auth
+
+after_success:
+  - coveralls

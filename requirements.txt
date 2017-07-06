@@ -1,0 +1,6 @@
+flask
+flask-cors
+flask-jsonpify
+datapackage-pipelines-sourcespec-registry
+cryptography
+requests
