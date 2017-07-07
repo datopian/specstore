@@ -10,7 +10,7 @@ install:
 script:
   - export
   - pylama specstore
-  - python -m pytest tests -sv --cov=auth
+  - python -m pytest tests -sv --cov=specstore
 
 after_success:
   - coveralls

@@ -41,7 +41,8 @@ def upload(token, contents, registry: SourceSpecRegistry, public_key):
                         spec = registry.get_source_spec(requested_uuid)
                         if spec is not None:
                             assert spec.owner == owner
-                    uuid = registry.put_source_spec(owner, dpp_module, contents, uuid=requested_uuid)
+                    uuid = registry.put_source_spec(owner, dpp_module, contents,
+                                                    uuid=requested_uuid, ignore_missing=True)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
                 except AssertionError:
