@@ -5,3 +5,5 @@ datapackage-pipelines-sourcespec-registry
 cryptography
 pyjwt
 requests
+psycopg2
+
