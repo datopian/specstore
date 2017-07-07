@@ -12,7 +12,7 @@ def make_blueprint():
     """Create blueprint.
     """
 
-    public_key = requests.get(f'https://{auth_server}/auth/public-key').content
+    public_key = requests.get(f'http://{auth_server}/auth/public-key').content
     registry = SourceSpecRegistry(db_connection_string)
 
     # Create instance
