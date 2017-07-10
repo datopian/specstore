@@ -6,6 +6,7 @@ python:
 
 install:
   - pip install --upgrade -r requirements.dev.txt
+  - pip install https://github.com/datahq/assembler/archive/master.zip
 
 script:
   - export
