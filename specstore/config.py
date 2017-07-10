@@ -11,9 +11,13 @@ dpp_module = 'assembler'
 
 
 # Extract values from spec
-def owner_extractor(spec):
+def owner_getter(spec):
     return spec.get('meta', {}).get('owner')
 
 
-def id_extractor(spec):
+def id_getter(spec):
     return spec.get('meta', {}).get('id')
+
+
+def id_setter(spec, id):
+    spec['meta']['id'] = id

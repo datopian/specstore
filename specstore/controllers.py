@@ -2,7 +2,8 @@ import jwt
 from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
 from werkzeug.exceptions import Unauthorized, BadRequest, NotFound
 
-from .config import owner_extractor, id_extractor, dpp_module
+from .config import dpp_module
+from .config import id_getter, id_setter, owner_getter
 
 
 def _verify(auth_token, owner, public_key):
@@ -32,17 +33,18 @@ def upload(token, contents, registry: SourceSpecRegistry, public_key):
     errors = []
     uuid = None
     if contents is not None:
-        owner = owner_extractor(contents)
+        owner = owner_getter(contents)
         if owner is not None:
             if _verify(token, owner, public_key):
                 try:
-                    requested_uuid=id_extractor(contents)
+                    requested_uuid = id_getter(contents)
                     if requested_uuid is not None:
                         spec = registry.get_source_spec(requested_uuid)
                         if spec is not None:
                             assert spec.owner == owner
                     uuid = registry.put_source_spec(owner, dpp_module, contents,
-                                                    uuid=requested_uuid, ignore_missing=True)
+                                                    uuid=requested_uuid, ignore_missing=True,
+                                                    uuid_setter=id_setter)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
                 except AssertionError:

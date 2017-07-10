@@ -23,7 +23,7 @@ def make_blueprint():
     status_controller = status
 
     def upload_():
-        token = request.headers.get('auth-token')
+        token = request.headers.get('auth-token') or request.values.get('jwt')
         contents = request.get_json()
         return jsonpify(upload_controller(token, contents, registry, public_key))
 
