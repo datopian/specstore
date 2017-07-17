@@ -15,8 +15,8 @@ def owner_getter(spec):
     return spec.get('meta', {}).get('owner')
 
 
-def id_getter(spec):
-    return spec.get('meta', {}).get('id')
+def dataset_getter(spec):
+    return spec.get('meta', {}).get('dataset')
 
 
 def id_setter(spec, id):

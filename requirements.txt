@@ -1,7 +1,7 @@
+datapackage-pipelines-sourcespec-registry==0.0.5
 flask
 flask-cors
 flask-jsonpify
-datapackage-pipelines-sourcespec-registry==0.0.3
 cryptography
 pyjwt
 requests

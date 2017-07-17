@@ -34,7 +34,7 @@ def make_blueprint():
     blueprint.add_url_rule(
         'upload', 'upload', upload_, methods=['POST'])
     blueprint.add_url_rule(
-        '<identifier>/status', 'status', status_, methods=['GET'])
+        '<owner>/<dataset>/status', 'status', status_, methods=['GET'])
 
     # Return blueprint
     return blueprint

@@ -17,5 +17,5 @@ app.register_blueprint(make_blueprint(), url_prefix='/source/')
 
 logging.getLogger().setLevel(logging.INFO)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     app.run()
