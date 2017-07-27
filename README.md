@@ -6,9 +6,17 @@ An API server for managing a Source Spec Registry
 
 ## Quick start
 
-- Clone the repo, 
-- install dependencies from `requirements.txt`, 
-- and run the server (`server.py`)
+# Clone the repo and install
+
+`make install`
+
+# Run tests
+
+`make test`
+
+# Run server
+
+`python server.py`
 
 ## Env Vars
 - `DATABASE_URL`: A SQLAlchemy compatible database connection string (where registry is stored) 
