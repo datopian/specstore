@@ -6,15 +6,15 @@ An API server for managing a Source Spec Registry
 
 ## Quick start
 
-# Clone the repo and install
+### Clone the repo and install
 
 `make install`
 
-# Run tests
+### Run tests
 
 `make test`
 
-# Run server
+### Run server
 
 `python server.py`
 
