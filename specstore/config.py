@@ -12,7 +12,7 @@ dpp_module = 'assembler'
 
 # Extract values from spec
 def owner_getter(spec):
-    return spec.get('meta', {}).get('owner')
+    return spec.get('meta', {}).get('ownerid')
 
 
 def dataset_getter(spec):
