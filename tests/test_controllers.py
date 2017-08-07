@@ -7,10 +7,10 @@ from specstore.controllers import status, upload
 
 private_key = open('tests/private.pem').read()
 public_key = open('tests/public.pem').read()
-spec = {'meta': {'dataset': 'id', 'owner': 'me'}}
-spec2 = {'meta': {'dataset': 'id2', 'owner': 'me2'}}
-spec_unauth = {'meta': {'dataset': 'id', 'owner': 'me2'}}
-bad_spec = {'meta': {'dataset': 'id', 'owner': 'me', 'version': 'one'}}
+spec = {'meta': {'dataset': 'id', 'ownerid': 'me'}}
+spec2 = {'meta': {'dataset': 'id2', 'ownerid': 'me2'}}
+spec_unauth = {'meta': {'dataset': 'id', 'ownerid': 'me2'}}
+bad_spec = {'meta': {'dataset': 'id', 'ownerid': 'me', 'version': 'one'}}
 
 def generate_token(owner):
     ret = {
