@@ -28,7 +28,7 @@ def make_blueprint():
         return jsonpify(upload_controller(token, contents, registry, public_key))
 
     def status_(owner, dataset):
-        return jsonpify(status_controller('{}/{}'.format(owner, dataset), registry))
+        return jsonpify(status_controller(owner, dataset, registry))
 
     # Register routes
     blueprint.add_url_rule(
