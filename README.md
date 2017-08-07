@@ -21,6 +21,7 @@ An API server for managing a Source Spec Registry
 ## Env Vars
 - `DATABASE_URL`: A SQLAlchemy compatible database connection string (where registry is stored) 
 - `AUTH_SERVER`: The domain name for the authentication server 
+- `DPP_URL`: URL for the datapackage pipelines service (e.g. `http://host:post/`) 
 
 ## API
 
@@ -55,14 +56,19 @@ inputs:
 
 ```javascript=
 {
-   'state': 'loaded/queued/running/errored',
-   'errors': [
-       'error-message', // ...
-   ],
+   'state': 'LOADED/REGISTERED/INVALID/RUNNING/SUCCEEDED/FAILED',
    'logs': [
               'log-line', 
               'log-line', // ...
            ],
+   'stats': {
+       'datapackage-hash': 'hash-value'
+       // other 'key': 'value' // e.g. 'count-of-rows', etc.
+   },
+   // below here - not implemented yet
+   'errors': [
+       'error-message', // ...
+   ],
    'history': [
       {
        'execution-time': 'iso-time',
@@ -78,12 +84,19 @@ inputs:
         'filename': '<displayable-filename>',
         'title': '<displayable-title>'
        }
-   ],
-   'stats': {
-       'key': 'value' // e.g. 'count-of-rows', etc.
-   }
+   ]
 }
 ```
+
+state definition:
+ - `LOADED`: In the specstore, pipeline not created yet
+ - `REGISTERED`: Waiting to run
+ - `INVALID`: Problem with the source spec or the pipeline
+ - `RUNNING`: Currently running
+ - `SUCCEEDED`: Finished successfully
+ - `FAILED`: Failed to run
+
+
 
 ### Upload 
 

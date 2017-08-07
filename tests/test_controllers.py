@@ -2,8 +2,12 @@ import jwt
 import pytest
 from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
 from werkzeug.exceptions import NotFound
+import requests_mock
 
-from specstore.controllers import status, upload
+import specstore.controllers
+status = specstore.controllers.status
+upload = specstore.controllers.upload
+specstore.controllers.dpp_server = 'http://dpp/'
 
 private_key = open('tests/private.pem').read()
 public_key = open('tests/public.pem').read()
@@ -11,6 +15,7 @@ spec = {'meta': {'dataset': 'id', 'ownerid': 'me'}}
 spec2 = {'meta': {'dataset': 'id2', 'ownerid': 'me2'}}
 spec_unauth = {'meta': {'dataset': 'id', 'ownerid': 'me2'}}
 bad_spec = {'meta': {'dataset': 'id', 'ownerid': 'me', 'version': 'one'}}
+
 
 def generate_token(owner):
     ret = {
@@ -41,11 +46,32 @@ def test_status_not_found(empty_registry):
         status('me', 'id', empty_registry)
 
 
-def test_status_found(full_registry):
-    ret = status('me', 'id', full_registry)
-    assert ret == {
-        "state": "loaded"
-    }
+def test_status_found_no_pipeline(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', status_code=404)
+        ret = status('me', 'id', full_registry)
+        assert ret == {
+            "state": "LOADED"
+        }
+
+
+def test_status_found_has_pipeline(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', json={
+            'state': 'RUNNING',
+            'stats': {
+                'hash': 'abc'
+            },
+            'reason': "my\nhovercraft\nis\nfull\nof\neels"
+        })
+        ret = status('me', 'id', full_registry)
+        assert ret == {
+            'state': 'RUNNING',
+            'stats': {
+                'hash': 'abc'
+            },
+            'logs': ["my", "hovercraft", "is", "full", "of", "eels"],
+        }
 
 
 # UPLOAD

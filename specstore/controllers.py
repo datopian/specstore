@@ -1,9 +1,10 @@
 import jwt
+import requests
 from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
 from werkzeug.exceptions import NotFound
 
-from .config import dpp_module
-from .config import dataset_getter, id_setter, owner_getter
+from .config import dpp_module, dpp_server
+from .config import dataset_getter, owner_getter
 
 
 def _verify(auth_token, owner, public_key):
@@ -60,6 +61,18 @@ def status(owner, dataset, registry: SourceSpecRegistry):
     spec = registry.get_source_spec(SourceSpecRegistry.format_uid(owner, dataset))
     if spec is None:
         raise NotFound()
-    return {
-        "state": "loaded"
-    }
+    resp = requests.get(dpp_server + 'api/raw/{}/{}'.format(owner, dataset))
+    if resp.status_code != 200:
+        return {
+            "state": "LOADED"
+        }
+    else:
+        resp = resp.json()
+        state = resp['state']
+        stats = resp.get('stats', {})
+        logs = resp.get('reason', '').split('\n')
+        return {
+            'state': state,
+            'stats': stats,
+            'logs': logs
+        }
