@@ -1,4 +1,4 @@
-datapackage-pipelines-sourcespec-registry==0.0.5
+datapackage-pipelines-sourcespec-registry==0.0.8
 flask
 flask-cors
 flask-jsonpify

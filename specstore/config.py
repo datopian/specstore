@@ -1,6 +1,8 @@
 import os
 
 # Auth server (to get the public key)
+import datetime
+
 auth_server = os.environ.get('AUTH_SERVER')
 
 # Database connection string
@@ -22,5 +24,5 @@ def dataset_getter(spec):
     return spec.get('meta', {}).get('dataset')
 
 
-def id_setter(spec, id):
-    spec['meta']['id'] = id
+def update_time_setter(spec, now: datetime.datetime):
+    spec['meta']['update_time'] = now.isoformat()

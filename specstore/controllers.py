@@ -1,10 +1,11 @@
+import datetime
 import jwt
 import requests
 from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
 from werkzeug.exceptions import NotFound
 
 from .config import dpp_module, dpp_server
-from .config import dataset_getter, owner_getter
+from .config import dataset_getter, owner_getter, update_time_setter
 
 
 def _verify(auth_token, owner, public_key):
@@ -39,8 +40,10 @@ def upload(token, contents, registry: SourceSpecRegistry, public_key):
             if _verify(token, owner, public_key):
                 try:
                     dataset_name = dataset_getter(contents)
+                    now = datetime.datetime.now()
+                    update_time_setter(contents, now)
                     uid = registry.put_source_spec(dataset_name, owner, dpp_module, contents,
-                                                   ignore_missing=True)
+                                                   ignore_missing=True, now=now)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
             else:
@@ -64,13 +67,18 @@ def status(owner, dataset, registry: SourceSpecRegistry):
     resp = requests.get(dpp_server + 'api/raw/{}/{}'.format(owner, dataset))
     if resp.status_code != 200:
         return {
-            "state": "LOADED"
+            'state': 'LOADED'
         }
     else:
         resp = resp.json()
         state = resp['state']
         stats = resp.get('stats', {})
         logs = resp.get('reason', '').split('\n')[-50:]
+        update_time = resp.get('pipeline', {}).get('update_time')
+        if update_time is None:
+            update_time = ''
+        if spec.updated_at and spec.updated_at.isoformat() > update_time:
+            state = 'REGISTERED'
         return {
             'state': state,
             'stats': stats,

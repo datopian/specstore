@@ -1,3 +1,4 @@
+import datetime
 import jwt
 import pytest
 from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
@@ -16,6 +17,7 @@ spec2 = {'meta': {'dataset': 'id2', 'ownerid': 'me2'}}
 spec_unauth = {'meta': {'dataset': 'id', 'ownerid': 'me2'}}
 bad_spec = {'meta': {'dataset': 'id', 'ownerid': 'me', 'version': 'one'}}
 
+now = datetime.datetime.now()
 
 def generate_token(owner):
     ret = {
@@ -36,7 +38,7 @@ def empty_registry():
 @pytest.fixture
 def full_registry():
     r = SourceSpecRegistry('sqlite://')
-    r.put_source_spec('id', 'me', 'assembler', spec)
+    r.put_source_spec('id', 'me', 'assembler', spec, now=now)
     return r
 
 # STATUS
@@ -55,14 +57,64 @@ def test_status_found_no_pipeline(full_registry):
         }
 
 
-def test_status_found_has_pipeline(full_registry):
+def test_status_found_has_pipeline_old_nonfinal(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/raw/me/id', json={
             'state': 'RUNNING',
             'stats': {
                 'hash': 'abc'
             },
-            'reason': "my\nhovercraft\nis\nfull\nof\neels"
+            'reason': "my\nhovercraft\nis\nfull\nof\neels",
+            'pipeline': {
+                'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
+            }
+
+        })
+        ret = status('me', 'id', full_registry)
+        assert ret == {
+            'state': 'REGISTERED',
+            'stats': {
+                'hash': 'abc'
+            },
+            'logs': ["my", "hovercraft", "is", "full", "of", "eels"],
+        }
+
+
+def test_status_found_has_pipeline_old_final(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', json={
+            'state': 'SUCCEEDED',
+            'stats': {
+                'hash': 'abc'
+            },
+            'reason': "my\nhovercraft\nis\nfull\nof\neels",
+            'pipeline': {
+                'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
+            }
+
+        })
+        ret = status('me', 'id', full_registry)
+        assert ret == {
+            'state': 'REGISTERED',
+            'stats': {
+                'hash': 'abc'
+            },
+            'logs': ["my", "hovercraft", "is", "full", "of", "eels"],
+        }
+
+
+def test_status_found_has_pipeline_current(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', json={
+            'state': 'RUNNING',
+            'stats': {
+                'hash': 'abc'
+            },
+            'reason': "my\nhovercraft\nis\nfull\nof\neels",
+            'pipeline': {
+                'update_time': now.isoformat()
+            }
+
         })
         ret = status('me', 'id', full_registry)
         assert ret == {
