@@ -24,6 +24,25 @@ An API server for managing a Source Spec Registry
 
 ## API
 
+### SourceSpec
+
+```yaml
+meta:
+  owner: <owner username>
+  ownerid: <owner unique id>
+  dataset: <dataset name>
+  version: 1
+  findability: <published/unlisted/private>
+inputs:
+ -  # only one input is supported atm
+    kind: datapackage
+    url: <datapackage-url>
+    parameters:
+      resource-mapping:
+        <resource-name-or-path>: <resource-url>
+```
+
+
 ### Status
 
 `/source/{identifier}/status`
