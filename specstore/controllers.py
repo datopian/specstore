@@ -70,7 +70,7 @@ def status(owner, dataset, registry: SourceSpecRegistry):
         resp = resp.json()
         state = resp['state']
         stats = resp.get('stats', {})
-        logs = resp.get('reason', '').split('\n')
+        logs = resp.get('reason', '').split('\n')[-50:]
         return {
             'state': state,
             'stats': stats,
