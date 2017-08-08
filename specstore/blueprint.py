@@ -4,7 +4,7 @@ from flask_jsonpify import jsonpify
 
 from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
 
-from .controllers import upload, status
+from .controllers import upload, status, info
 from .config import auth_server, db_connection_string
 
 
@@ -21,6 +21,7 @@ def make_blueprint():
     # Controller Proxies
     upload_controller = upload
     status_controller = status
+    info_controller = info
 
     def upload_():
         token = request.headers.get('auth-token') or request.values.get('jwt')
@@ -33,6 +34,8 @@ def make_blueprint():
     # Register routes
     blueprint.add_url_rule(
         'upload', 'upload', upload_, methods=['POST'])
+    blueprint.add_url_rule(
+        '<owner>/<dataset>/info', 'info', info_, methods=['GET'])
     blueprint.add_url_rule(
         '<owner>/<dataset>/status', 'status', status_, methods=['GET'])
 

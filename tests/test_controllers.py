@@ -8,6 +8,8 @@ import requests_mock
 import specstore.controllers
 status = specstore.controllers.status
 upload = specstore.controllers.upload
+info = specstore.controllers.info
+get_fixed_pipeline_state = specstore.controllers.get_fixed_pipeline_state
 specstore.controllers.dpp_server = 'http://dpp/'
 
 private_key = open('tests/private.pem').read()
@@ -43,87 +45,113 @@ def full_registry():
 
 # STATUS
 
-def test_status_not_found(empty_registry):
+def test_get_fixed_pipeline_state_not_found(empty_registry):
     with pytest.raises(NotFound):
-        status('me', 'id', empty_registry)
+        get_fixed_pipeline_state('me', 'id', empty_registry)
 
 
-def test_status_found_no_pipeline(full_registry):
+def test_get_fixed_pipeline_state_found_no_pipeline(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/raw/me/id', status_code=404)
-        ret = status('me', 'id', full_registry)
+        ret = get_fixed_pipeline_state('me', 'id', full_registry)
         assert ret == {
             "state": "LOADED"
         }
 
 
-def test_status_found_has_pipeline_old_nonfinal(full_registry):
+def test_get_fixed_pipeline_state_found_has_pipeline_old_nonfinal(full_registry):
+    response = {
+        'state': 'RUNNING',
+        'stats': {
+            'hash': 'abc'
+        },
+        'reason': "my\nhovercraft\nis\nfull\nof\neels",
+        'pipeline': {
+            'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
+        }
+    }
     with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json={
-            'state': 'RUNNING',
-            'stats': {
-                'hash': 'abc'
-            },
-            'reason': "my\nhovercraft\nis\nfull\nof\neels",
-            'pipeline': {
-                'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
-            }
+        mock.get('http://dpp/api/raw/me/id', json=response)
+        ret = get_fixed_pipeline_state('me', 'id', full_registry)
+        response['state'] = 'REGISTERED'
+        assert ret == response
 
-        })
-        ret = status('me', 'id', full_registry)
-        assert ret == {
-            'state': 'REGISTERED',
-            'stats': {
-                'hash': 'abc'
-            },
-            'logs': ["my", "hovercraft", "is", "full", "of", "eels"],
+
+def test_get_fixed_pipeline_state_found_has_pipeline_old_final(full_registry):
+    response = {
+        'state': 'SUCCEEDED',
+        'stats': {
+            'hash': 'abc'
+        },
+        'reason': "my\nhovercraft\nis\nfull\nof\neels",
+        'pipeline': {
+            'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
         }
 
-
-def test_status_found_has_pipeline_old_final(full_registry):
+    }
     with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json={
-            'state': 'SUCCEEDED',
-            'stats': {
-                'hash': 'abc'
-            },
-            'reason': "my\nhovercraft\nis\nfull\nof\neels",
-            'pipeline': {
-                'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
-            }
+        mock.get('http://dpp/api/raw/me/id', json=response)
+        ret = get_fixed_pipeline_state('me', 'id', full_registry)
+        response['state'] = 'REGISTERED'
+        assert ret == response
 
-        })
-        ret = status('me', 'id', full_registry)
-        assert ret == {
-            'state': 'REGISTERED',
-            'stats': {
-                'hash': 'abc'
-            },
-            'logs': ["my", "hovercraft", "is", "full", "of", "eels"],
+
+def test_get_fixed_pipeline_state_found_has_pipeline_current(full_registry):
+    response = {
+        'state': 'RUNNING',
+        'stats': {
+            'hash': 'abc'
+        },
+        'reason': "my\nhovercraft\nis\nfull\nof\neels",
+        'pipeline': {
+            'update_time': now.isoformat()
         }
+
+    }
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', json=response)
+        ret = get_fixed_pipeline_state('me', 'id', full_registry)
+        assert ret == response
 
 
 def test_status_found_has_pipeline_current(full_registry):
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json={
-            'state': 'RUNNING',
-            'stats': {
-                'hash': 'abc'
-            },
-            'reason': "my\nhovercraft\nis\nfull\nof\neels",
-            'pipeline': {
-                'update_time': now.isoformat()
-            }
+    response = {
+        'state': 'RUNNING',
+        'stats': {
+            'hash': 'abc'
+        },
+        'reason': "my\n" * 200 + "my",
+        'pipeline': {
+            'update_time': now.isoformat()
+        }
 
-        })
+    }
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', json=response)
         ret = status('me', 'id', full_registry)
         assert ret == {
             'state': 'RUNNING',
-            'stats': {
-                'hash': 'abc'
-            },
-            'logs': ["my", "hovercraft", "is", "full", "of", "eels"],
+            'modified': response['pipeline']['update_time'],
+            'logs': ["my"] * 50
         }
+
+
+def test_info_found_has_pipeline_current(full_registry):
+    response = {
+        'state': 'RUNNING',
+        'stats': {
+            'hash': 'abc'
+        },
+        'reason': "my\nhovercraft\nis\nfull\nof\neels",
+        'pipeline': {
+            'update_time': now.isoformat()
+        }
+
+    }
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/raw/me/id', json=response)
+        ret = info('me', 'id', full_registry)
+        assert ret == response
 
 
 # UPLOAD

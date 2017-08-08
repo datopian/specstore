@@ -60,7 +60,7 @@ def upload(token, contents, registry: SourceSpecRegistry, public_key):
     }
 
 
-def status(owner, dataset, registry: SourceSpecRegistry):
+def get_fixed_pipeline_state(owner, dataset, registry: SourceSpecRegistry):
     spec = registry.get_source_spec(SourceSpecRegistry.format_uid(owner, dataset))
     if spec is None:
         raise NotFound()
@@ -71,16 +71,24 @@ def status(owner, dataset, registry: SourceSpecRegistry):
         }
     else:
         resp = resp.json()
-        state = resp['state']
-        stats = resp.get('stats', {})
-        logs = resp.get('reason', '').split('\n')[-50:]
         update_time = resp.get('pipeline', {}).get('update_time')
         if update_time is None:
             update_time = ''
         if spec.updated_at and spec.updated_at.isoformat() > update_time:
-            state = 'REGISTERED'
-        return {
-            'state': state,
-            'stats': stats,
-            'logs': logs
-        }
+            resp['state'] = 'REGISTERED'
+        return resp
+
+
+def status(owner, dataset, registry: SourceSpecRegistry):
+    resp = get_fixed_pipeline_state(owner, dataset, registry)
+    return {
+        'state': resp['state'],
+        'modified': resp.get('pipeline', {}).get('update_time'),
+        'logs': resp.get('reason', '').split('\n')[-50:]
+    }
+
+
+def info(owner, dataset, registry: SourceSpecRegistry):
+    resp = get_fixed_pipeline_state(owner, dataset, registry)
+    return resp
+
