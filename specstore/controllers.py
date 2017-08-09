@@ -84,7 +84,8 @@ def status(owner, dataset, registry: SourceSpecRegistry):
     return {
         'state': resp['state'],
         'modified': resp.get('pipeline', {}).get('update_time'),
-        'logs': resp.get('reason', '').split('\n')[-50:]
+        'logs': resp.get('reason', '').split('\n')[-50:],
+        'stats': resp.get('stats', {})
     }
 
 

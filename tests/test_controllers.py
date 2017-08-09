@@ -132,7 +132,10 @@ def test_status_found_has_pipeline_current(full_registry):
         assert ret == {
             'state': 'RUNNING',
             'modified': response['pipeline']['update_time'],
-            'logs': ["my"] * 50
+            'logs': ["my"] * 50,
+            'stats': {
+                'hash': 'abc'
+            }
         }
 
 
