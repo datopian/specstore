@@ -105,18 +105,17 @@ inputs:
   "updated": <numeric-timestamp>,
   "last_success": <numeric-timestamp>,
   "ended": <numeric-timestamp>
-}```
-
+}
+```
 
 state definition:
- - `LOADED`: In the specstore, pipeline not created yet
- - `REGISTERED`: Waiting to run
- - `INVALID`: Problem with the source spec or the pipeline
- - `RUNNING`: Currently running
- - `SUCCEEDED`: Finished successfully
- - `FAILED`: Failed to run
 
-
+- `LOADED`: In the specstore, pipeline not created yet
+- `REGISTERED`: Waiting to run
+- `INVALID`: Problem with the source spec or the pipeline
+- `RUNNING`: Currently running
+- `SUCCEEDED`: Finished successfully
+- `FAILED`: Failed to run
 
 ### Upload 
 
