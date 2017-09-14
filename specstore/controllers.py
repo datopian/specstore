@@ -81,10 +81,14 @@ def get_fixed_pipeline_state(owner, dataset, registry: SourceSpecRegistry):
 
 def status(owner, dataset, registry: SourceSpecRegistry):
     resp = get_fixed_pipeline_state(owner, dataset, registry)
+    logs = resp.get('reason', '')
+    if logs is None:
+        logs = ''
+    logs = logs.split('\n')[-50:],
     return {
         'state': resp['state'],
         'modified': resp.get('pipeline', {}).get('update_time'),
-        'logs': resp.get('reason', '').split('\n')[-50:],
+        'logs': logs,
         'stats': resp.get('stats', {})
     }
 
