@@ -76,6 +76,7 @@ def get_fixed_pipeline_state(owner, dataset, registry: SourceSpecRegistry):
             update_time = ''
         if spec.updated_at and spec.updated_at.isoformat() > update_time:
             resp['state'] = 'REGISTERED'
+        resp['spec_modified'] = spec.updated_at.isoformat() 
         return resp
 
 
