@@ -66,7 +66,7 @@ def get_fixed_pipeline_state(owner, dataset, registry: SourceSpecRegistry):
         raise NotFound()
     resp = requests.get(dpp_server + 'api/raw/{}/{}'.format(owner, dataset))
     if resp.status_code != 200:
-        return {
+        resp = {
             'state': 'LOADED'
         }
     else:
@@ -76,8 +76,9 @@ def get_fixed_pipeline_state(owner, dataset, registry: SourceSpecRegistry):
             update_time = ''
         if spec.updated_at and spec.updated_at.isoformat() > update_time:
             resp['state'] = 'REGISTERED'
-        resp['spec_modified'] = spec.updated_at.isoformat() 
-        return resp
+    resp['spec_contents'] = spec.contents
+    resp['spec_modified'] = spec.updated_at.isoformat()
+    return resp
 
 
 def status(owner, dataset, registry: SourceSpecRegistry):
