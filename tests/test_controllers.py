@@ -54,9 +54,7 @@ def test_get_fixed_pipeline_state_found_no_pipeline(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/raw/me/id', status_code=404)
         ret = get_fixed_pipeline_state('me', 'id', full_registry)
-        assert ret == {
-            "state": "LOADED"
-        }
+        assert ret['state'] == "LOADED"
 
 
 def test_get_fixed_pipeline_state_found_has_pipeline_old_nonfinal(full_registry):
@@ -74,6 +72,8 @@ def test_get_fixed_pipeline_state_found_has_pipeline_old_nonfinal(full_registry)
         mock.get('http://dpp/api/raw/me/id', json=response)
         ret = get_fixed_pipeline_state('me', 'id', full_registry)
         response['state'] = 'REGISTERED'
+        response['spec_contents'] = spec
+        response['spec_modified'] = now.isoformat()
         assert ret == response
 
 
@@ -93,6 +93,8 @@ def test_get_fixed_pipeline_state_found_has_pipeline_old_final(full_registry):
         mock.get('http://dpp/api/raw/me/id', json=response)
         ret = get_fixed_pipeline_state('me', 'id', full_registry)
         response['state'] = 'REGISTERED'
+        response['spec_contents'] = spec
+        response['spec_modified'] = now.isoformat()
         assert ret == response
 
 
@@ -111,6 +113,8 @@ def test_get_fixed_pipeline_state_found_has_pipeline_current(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/raw/me/id', json=response)
         ret = get_fixed_pipeline_state('me', 'id', full_registry)
+        response['spec_contents'] = spec
+        response['spec_modified'] = now.isoformat()
         assert ret == response
 
 
@@ -132,7 +136,7 @@ def test_status_found_has_pipeline_current(full_registry):
         assert ret == {
             'state': 'RUNNING',
             'modified': response['pipeline']['update_time'],
-            'logs': ["my"] * 50,
+            'logs': (["my"] * 50,),
             'stats': {
                 'hash': 'abc'
             }
@@ -154,6 +158,8 @@ def test_info_found_has_pipeline_current(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/raw/me/id', json=response)
         ret = info('me', 'id', full_registry)
+        response['spec_contents'] = spec
+        response['spec_modified'] = now.isoformat()
         assert ret == response
 
 
@@ -234,11 +240,11 @@ def test_upload_append(full_registry):
     assert ret['errors'] == []
     specs = list(full_registry.list_source_specs())
     assert len(specs) == 2
-    first = specs[0]
+    first = specs[1]
     assert first.owner == 'me'
     assert first.uid == 'me/id'
     assert first.contents == spec
-    second = specs[1]
+    second = specs[0]
     assert second.owner == 'me2'
     assert second.uid == 'me2/id2'
     assert second.contents == spec2
