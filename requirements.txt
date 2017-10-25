@@ -1,4 +1,4 @@
-datapackage-pipelines-sourcespec-registry>=0.0.9
+-e git+git://github.com/datahq/planner.git#egg=planner
 flask
 flask-cors
 flask-jsonpify
@@ -6,4 +6,3 @@ cryptography
 pyjwt
 requests
 psycopg2
-
