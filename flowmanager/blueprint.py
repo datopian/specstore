@@ -16,7 +16,7 @@ def make_blueprint():
     registry = FlowRegistry(db_connection_string)
 
     # Create instance
-    blueprint = Blueprint('specstore', 'specstore')
+    blueprint = Blueprint('flowmanager', 'flowmanager')
 
     # Controller Proxies
     upload_controller = upload

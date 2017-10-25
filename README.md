@@ -1,6 +1,6 @@
 # DataHQ Spec Store
 
-[![Build Status](https://travis-ci.org/datahq/specstore.svg?branch=master)](https://travis-ci.org/datahq/specstore)
+[![Build Status](https://travis-ci.org/datahq/flowmanager.svg?branch=master)](https://travis-ci.org/datahq/flowmanager)
 
 An API server for managing a Source Spec Registry
 
@@ -93,7 +93,7 @@ outputs:
               'log-line',
               'log-line', // ...
            ],
-   'modified': 'specstore-timestamp-of-pipeline-data
+   'modified': 'flowmanager-timestamp-of-pipeline-data
 }
 ```
 
@@ -142,7 +142,7 @@ outputs:
 
 state definition:
 
-- `LOADED`: In the specstore, pipeline not created yet
+- `LOADED`: In the flowmanager, pipeline not created yet
 - `REGISTERED`: Waiting to run
 - `INVALID`: Problem with the source spec or the pipeline
 - `RUNNING`: Currently running

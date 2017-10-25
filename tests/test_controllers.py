@@ -3,19 +3,19 @@ import jwt
 import pytest
 import os
 
-from specstore.models import FlowRegistry
+from flowmanager.models import FlowRegistry
 from werkzeug.exceptions import NotFound
 import requests_mock
 
 from .config import load_spec
 
-import specstore.controllers
-status = specstore.controllers.status
-upload = specstore.controllers.upload
-update = specstore.controllers.update
-info = specstore.controllers.info
-get_fixed_pipeline_state = specstore.controllers.get_fixed_pipeline_state
-specstore.controllers.dpp_server = 'http://dpp/'
+import flowmanager.controllers
+status = flowmanager.controllers.status
+upload = flowmanager.controllers.upload
+update = flowmanager.controllers.update
+info = flowmanager.controllers.info
+get_fixed_pipeline_state = flowmanager.controllers.get_fixed_pipeline_state
+flowmanager.controllers.dpp_server = 'http://dpp/'
 
 os.environ['PKGSTORE_BUCKET'] = 'testing.bucket.com'
 

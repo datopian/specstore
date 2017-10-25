@@ -1,7 +1,7 @@
 import datetime
 import unittest
 
-from specstore.models import FlowRegistry
+from flowmanager.models import FlowRegistry
 
 registry = FlowRegistry('sqlite://')
 
