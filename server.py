@@ -3,7 +3,7 @@ import logging
 from flask import Flask
 from flask_cors import CORS
 
-from specstore import make_blueprint
+from flowmanager import make_blueprint
 
 # Create application
 app = Flask(__name__, static_folder=None)

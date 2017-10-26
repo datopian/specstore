@@ -1,0 +1,12 @@
+meta:
+  owner: me
+  ownerid: me
+  dataset: id2
+  version: 1
+  findability: published
+inputs:
+- kind: datapackage
+  parameters:
+    resource-mapping:
+      vix-daily: data/dummy.csv
+  url: datapackage.json

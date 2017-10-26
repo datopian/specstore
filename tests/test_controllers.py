@@ -1,23 +1,29 @@
 import datetime
 import jwt
 import pytest
-from datapackage_pipelines_sourcespec_registry.registry import SourceSpecRegistry
+import os
+
+from flowmanager.models import FlowRegistry
 from werkzeug.exceptions import NotFound
 import requests_mock
 
-import specstore.controllers
-status = specstore.controllers.status
-upload = specstore.controllers.upload
-info = specstore.controllers.info
-get_fixed_pipeline_state = specstore.controllers.get_fixed_pipeline_state
-specstore.controllers.dpp_server = 'http://dpp/'
+from .config import load_spec
+
+import flowmanager.controllers
+status = flowmanager.controllers.status
+upload = flowmanager.controllers.upload
+update = flowmanager.controllers.update
+info = flowmanager.controllers.info
+get_fixed_pipeline_state = flowmanager.controllers.get_fixed_pipeline_state
+flowmanager.controllers.dpp_server = 'http://dpp/'
+
+os.environ['PKGSTORE_BUCKET'] = 'testing.bucket.com'
 
 private_key = open('tests/private.pem').read()
 public_key = open('tests/public.pem').read()
-spec = {'meta': {'dataset': 'id', 'ownerid': 'me'}}
-spec2 = {'meta': {'dataset': 'id2', 'ownerid': 'me2'}}
-spec_unauth = {'meta': {'dataset': 'id', 'ownerid': 'me2'}}
-bad_spec = {'meta': {'dataset': 'id', 'ownerid': 'me', 'version': 'one'}}
+spec = load_spec('simple')
+spec2 =  load_spec('simple2')
+spec_unauth = load_spec('unauth')
 
 now = datetime.datetime.now()
 
@@ -33,14 +39,23 @@ def generate_token(owner):
 
 @pytest.fixture
 def empty_registry():
-    r = SourceSpecRegistry('sqlite://')
+    r = FlowRegistry('sqlite://')
     return r
 
 
 @pytest.fixture
 def full_registry():
-    r = SourceSpecRegistry('sqlite://')
-    r.put_source_spec('id', 'me', 'assembler', spec, now=now)
+    r = FlowRegistry('sqlite://')
+    r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
+    r.save_dataset_revision(dict(revision_id='me/id/1', dataset_id='me/id', revision=1))
+    r.save_pipeline(dict(
+        pipeline_id='me/id:non-tabular',
+        flow_id='me/id/1',
+        pipeline_details=[]))
+    r.save_pipeline(dict(
+        pipeline_id='me/id',
+        flow_id='me/id/1',
+        pipeline_details=[]))
     return r
 
 # STATUS
@@ -196,26 +211,25 @@ def test_upload_bad_token(empty_registry):
     assert ret['errors'] == ['No token or token not authorised for owner']
 
 
-def test_upload_invalid_contents(empty_registry):
-    token = generate_token('me')
-    ret = upload(token, bad_spec, empty_registry, public_key)
-    assert not ret['success']
-    assert ret['id'] is None
-    assert ret['errors'] == ['Validation failed for contents']
-
-
-def test_upload_new(empty_registry: SourceSpecRegistry):
+def test_upload_new(empty_registry: FlowRegistry):
     token = generate_token('me')
     ret = upload(token, spec, empty_registry, public_key)
     assert ret['success']
     assert ret['id'] == 'me/id'
     assert ret['errors'] == []
-    specs = list(empty_registry.list_source_specs())
+    specs = list(empty_registry.list_datasets())
     assert len(specs) == 1
     first = specs[0]
     assert first.owner == 'me'
-    assert first.uid == 'me/id'
-    assert first.contents == spec
+    assert first.identifier == 'me/id'
+    assert first.spec == spec
+    revision = empty_registry.get_revision_by_dataset_id('me/id')
+    assert revision['revision'] == 1
+    assert revision['status'] == 'flow-pending'
+    pipelines = list(empty_registry.list_pipelines('me/id/1'))
+    assert len(pipelines) == 2
+    pipeline = pipelines[0]
+    assert pipeline.status == 'pending'
 
 
 def test_upload_existing(full_registry):
@@ -224,12 +238,22 @@ def test_upload_existing(full_registry):
     assert ret['success']
     assert ret['id'] == 'me/id'
     assert ret['errors'] == []
-    specs = list(full_registry.list_source_specs())
+    specs = list(full_registry.list_datasets())
     assert len(specs) == 1
     first = specs[0]
     assert first.owner == 'me'
-    assert first.uid == 'me/id'
-    assert first.contents == spec
+    assert first.identifier == 'me/id'
+    assert first.spec == spec
+    revision = full_registry.get_revision_by_dataset_id('me/id')
+    assert revision['revision'] == 2
+    assert revision['status'] == 'flow-pending'
+    pipelines = list(full_registry.list_pipelines('me/id/2'))
+    assert len(pipelines) == 2
+    pipeline = pipelines[0]
+    assert pipeline.status == 'pending'
+    ## make pipelines for previous revision are still there
+    pipelines = list(full_registry.list_pipelines('me/id/1'))
+    assert len(pipelines) == 2
 
 
 def test_upload_append(full_registry):
@@ -238,13 +262,63 @@ def test_upload_append(full_registry):
     assert ret['success']
     assert ret['id'] == 'me2/id2'
     assert ret['errors'] == []
-    specs = list(full_registry.list_source_specs())
+    specs = list(full_registry.list_datasets())
     assert len(specs) == 2
     first = specs[1]
-    assert first.owner == 'me'
-    assert first.uid == 'me/id'
-    assert first.contents == spec
+
+    assert first.owner == 'me2'
+    assert first.identifier == 'me2/id2'
+    assert first.spec == spec2
     second = specs[0]
-    assert second.owner == 'me2'
-    assert second.uid == 'me2/id2'
-    assert second.contents == spec2
+    assert second.owner == 'me'
+    assert second.identifier == 'me/id'
+    assert second.spec == spec
+
+    revision = full_registry.get_revision_by_dataset_id('me2/id2')
+    assert revision['revision'] == 1
+    assert revision['status'] == 'flow-pending'
+    pipelines = list(full_registry.list_pipelines('me2/id2/1'))
+    assert len(pipelines) == 2
+    pipelines = list(full_registry.list_pipelines('me/id/1'))
+    assert len(pipelines) == 2
+
+def test_update_pending(full_registry):
+    payload = {
+      "pipeline": "me/id",
+      "event": "progress",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry)
+    assert ret['status'] == 'pending'
+    assert ret['id'] == 'me/id/1'
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'pending'
+
+def test_update_fail(full_registry):
+    payload = {
+      "pipeline": "me/id",
+      "event": "finished",
+      "success": False,
+      "errors": ['error']
+    }
+    ret = update(payload, full_registry)
+    assert ret['status'] == 'failed'
+    assert ret['id'] == 'me/id/1'
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'failed'
+
+def test_update_success(full_registry):
+    payload = {
+      "pipeline": "me/id",
+      "event": "finished",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry)
+    assert ret['status'] == 'success'
+    assert ret['id'] == 'me/id/1'
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'success'
+    pipelines = full_registry.list_pipelines('me/id')
+    assert len(list(pipelines)) == 0

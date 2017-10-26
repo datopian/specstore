@@ -13,8 +13,8 @@ def read(*paths):
     
     
 # Prepare
-PACKAGE = 'specstore'
-NAME = 'specstore'
+PACKAGE = 'flowmanager'
+NAME = 'flowmanager'
 INSTALL_REQUIRES = [
     'flask',
     'flask-cors',

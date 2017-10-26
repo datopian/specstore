@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/datahq/specstore.svg?branch=master)](https://travis-ci.org/datahq/specstore)
 
-An API server for managing a Source Spec Registry 
+An API server for managing a Source Spec Registry
 
 ## Quick start
 
@@ -19,9 +19,9 @@ An API server for managing a Source Spec Registry
 `python server.py`
 
 ## Env Vars
-- `DATABASE_URL`: A SQLAlchemy compatible database connection string (where registry is stored) 
-- `AUTH_SERVER`: The domain name for the authentication server 
-- `DPP_URL`: URL for the datapackage pipelines service (e.g. `http://host:post/`) 
+- `DATABASE_URL`: A SQLAlchemy compatible database connection string (where registry is stored)
+- `AUTH_SERVER`: The domain name for the authentication server
+- `DPP_URL`: URL for the datapackage pipelines service (e.g. `http://host:post/`)
 
 ## API
 
@@ -47,14 +47,14 @@ inputs:
         - schema: <resource 1 schema, if exists>
         - format: <resource 1 format, if exists>
         - ... # other properties, if available, are optional
-        
+
 processing:
  - # Processing steps that need to be done on sources to get proper data streams
    input: <source-resource-name - e.g. `my-excel-resource`>
    output: <destination-resource-name - e.g. `my-excel-resource-sheet-1`>
    tabulator: # Currently we're only supporting tabulator transformations
      # These are sample options for tabulator, see its docs for all available options
-     headers: 2 
+     headers: 2
      sheet: 1
 
 outputs:
@@ -70,7 +70,7 @@ outputs:
       credentials: <tbd, should be the name of a user provided configuration - not the actual credentials>
   -
     kind: zip (dump.to_zip)
-    parameters: 
+    parameters:
         out-file: <name of the file>
   - ... # other output formats
 
@@ -90,10 +90,10 @@ outputs:
 {
    'state': 'LOADED/REGISTERED/INVALID/RUNNING/SUCCEEDED/FAILED',
    'logs': [
-              'log-line', 
+              'log-line',
               'log-line', // ...
            ],
-   'modified': 'specstore-timestamp-of-pipeline-data
+   'modified': 'flowmanager-timestamp-of-pipeline-data
 }
 ```
 
@@ -142,14 +142,14 @@ outputs:
 
 state definition:
 
-- `LOADED`: In the specstore, pipeline not created yet
+- `LOADED`: In the flowmanager, pipeline not created yet
 - `REGISTERED`: Waiting to run
 - `INVALID`: Problem with the source spec or the pipeline
 - `RUNNING`: Currently running
 - `SUCCEEDED`: Finished successfully
 - `FAILED`: Failed to run
 
-### Upload 
+### Upload
 
 `/source/upload`
 
@@ -171,6 +171,38 @@ A valid spec in JSON form.
 ```javascript=
 {
   "success": true,
+  "id": "<identifier>"
+  "errors": [
+      "<error-message>"
+  ]
+}
+```
+
+### Update
+
+`/source/update`
+
+#### Method
+
+`POST`
+
+#### Body
+
+Payload in JSON form.
+
+```javascript=
+{
+  "pipeline": "<pipeline-id>",
+  "event": "queue/start/progress/finish",
+  "success": true/false (when applicable),
+  "errors": [list-of-errors, when applicable]
+}
+```
+
+#### Response
+```javascript=
+{
+  "success": success/pending/fail,
   "id": "<identifier>"
   "errors": [
       "<error-message>"
