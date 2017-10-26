@@ -1,4 +1,4 @@
--e git+git://github.com/datahq/planner.git#egg=planner
+https://github.com/datahq/planner/archive/master.zip
 flask
 flask-cors
 flask-jsonpify

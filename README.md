@@ -1,6 +1,6 @@
 # DataHQ Spec Store
 
-[![Build Status](https://travis-ci.org/datahq/flowmanager.svg?branch=master)](https://travis-ci.org/datahq/flowmanager)
+[![Build Status](https://travis-ci.org/datahq/specstore.svg?branch=master)](https://travis-ci.org/datahq/specstore)
 
 An API server for managing a Source Spec Registry
 
