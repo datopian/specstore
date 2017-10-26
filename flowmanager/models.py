@@ -211,10 +211,16 @@ class FlowRegistry:
             return  ret['flow_id']
         return None
 
-    def list_pipelines(self, flow_id):
+    def list_pipelines_by_id(self, flow_id):
         with self.session_scope() as session:
             all = session.query(Pipelines).filter_by(
                 flow_id=flow_id).all()
+            session.expunge_all()
+            yield from all
+
+    def list_pipelines(self):
+        with self.session_scope() as session:
+            all = session.query(Pipelines).all()
             session.expunge_all()
             yield from all
 

@@ -226,10 +226,12 @@ def test_upload_new(empty_registry: FlowRegistry):
     revision = empty_registry.get_revision_by_dataset_id('me/id')
     assert revision['revision'] == 1
     assert revision['status'] == 'flow-pending'
-    pipelines = list(empty_registry.list_pipelines('me/id/1'))
+    pipelines = list(empty_registry.list_pipelines_by_id('me/id/1'))
     assert len(pipelines) == 2
     pipeline = pipelines[0]
     assert pipeline.status == 'pending'
+    pipelines = list(empty_registry.list_pipelines())
+    assert len(pipelines) == 2
 
 
 def test_upload_existing(full_registry):
@@ -247,13 +249,15 @@ def test_upload_existing(full_registry):
     revision = full_registry.get_revision_by_dataset_id('me/id')
     assert revision['revision'] == 2
     assert revision['status'] == 'flow-pending'
-    pipelines = list(full_registry.list_pipelines('me/id/2'))
+    pipelines = list(full_registry.list_pipelines_by_id('me/id/2'))
     assert len(pipelines) == 2
     pipeline = pipelines[0]
     assert pipeline.status == 'pending'
     ## make pipelines for previous revision are still there
-    pipelines = list(full_registry.list_pipelines('me/id/1'))
+    pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
     assert len(pipelines) == 2
+    pipelines = list(full_registry.list_pipelines())
+    assert len(pipelines) == 4
 
 
 def test_upload_append(full_registry):
@@ -277,10 +281,12 @@ def test_upload_append(full_registry):
     revision = full_registry.get_revision_by_dataset_id('me2/id2')
     assert revision['revision'] == 1
     assert revision['status'] == 'flow-pending'
-    pipelines = list(full_registry.list_pipelines('me2/id2/1'))
+    pipelines = list(full_registry.list_pipelines_by_id('me2/id2/1'))
     assert len(pipelines) == 2
-    pipelines = list(full_registry.list_pipelines('me/id/1'))
+    pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
     assert len(pipelines) == 2
+    pipelines = list(full_registry.list_pipelines())
+    assert len(pipelines) == 4
 
 def test_update_pending(full_registry):
     payload = {
@@ -320,5 +326,7 @@ def test_update_success(full_registry):
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
     assert revision['status'] == 'success'
-    pipelines = full_registry.list_pipelines('me/id')
+    pipelines = full_registry.list_pipelines_by_id('me/id')
+    assert len(list(pipelines)) == 0
+    pipelines = full_registry.list_pipelines()
     assert len(list(pipelines)) == 0
