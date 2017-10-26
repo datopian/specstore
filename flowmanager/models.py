@@ -222,7 +222,8 @@ class FlowRegistry:
         with self.session_scope() as session:
             all = session.query(Pipelines).all()
             session.expunge_all()
-            yield from all
+            for pipeline in all:
+                yield pipeline.pipeline_details
 
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:
