@@ -9,4 +9,16 @@ inputs:
   parameters:
     resource-mapping:
       vix-daily: data/dummy.csv
+    descriptor:
+      name: single-file
+      resources:
+        -
+          name: birthdays
+          path: data/birthdays.csv
+          format: csv
+          schema:
+            fields:
+              -
+                name: date
+                type: date
   url: datapackage.json

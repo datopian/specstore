@@ -9,6 +9,13 @@ from .config import dpp_module, dpp_server
 from .config import dataset_getter, owner_getter, update_time_setter
 from .models import FlowRegistry
 
+CINFIGS = {'allowed_types': [
+    'derived/csv',
+    'derived/json',
+    'derived/zip',
+    'source/tabular',
+    'source/non-tabular'
+]}
 
 def _verify(auth_token, owner, public_key):
     """Verify Auth Token.
@@ -50,7 +57,8 @@ def upload(token, contents, registry: FlowRegistry, public_key):
                     revision = registry.create_revision(
                         dataset_id, now, 'flow-pending', errors)
                     revision = revision['revision']
-                    pipelines = planner.plan(revision, contents)
+                    pipelines = planner.plan(revision, contents, **CINFIGS)
+                    print(len(pipelines))
                     for pipeline in pipelines:
                         doc = dict(
                             pipeline_id=registry.format_identifier(
