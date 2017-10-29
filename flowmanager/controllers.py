@@ -58,7 +58,6 @@ def upload(token, contents, registry: FlowRegistry, public_key):
                         dataset_id, now, 'flow-pending', errors)
                     revision = revision['revision']
                     pipelines = planner.plan(revision, contents, **CINFIGS)
-                    print(len(pipelines))
                     for pipeline in pipelines:
                         doc = dict(
                             pipeline_id=registry.format_identifier(
