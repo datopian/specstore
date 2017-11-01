@@ -98,10 +98,8 @@ class FlowRegistry:
                 for c in inspect(obj).mapper.column_attrs}
 
     @staticmethod
-    def format_identifier(parent, child, *args):
-        if len(args):
-            return '{}/{}/'.format(parent, child) + '/'.join(str(arg) for arg in args)
-        return '{}/{}'.format(parent, child)
+    def format_identifier(*args):
+        return '/'.join(str(arg) for arg in args)
 
     # datasets
     def save_dataset(self, dataset):
@@ -208,7 +206,7 @@ class FlowRegistry:
     def get_flow_id(self, id):
         ret = self.get_pipeline(id)
         if ret is not None:
-            return  ret['flow_id']
+            return ret['flow_id']
         return None
 
     def list_pipelines_by_id(self, flow_id):
@@ -222,8 +220,7 @@ class FlowRegistry:
         with self.session_scope() as session:
             all = session.query(Pipelines).all()
             session.expunge_all()
-            for pipeline in all:
-                yield pipeline.pipeline_details
+            yield from all
 
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:

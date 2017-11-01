@@ -1,4 +1,5 @@
 import datetime
+import logging
 import jwt
 import requests
 
@@ -58,13 +59,12 @@ def upload(token, contents, registry: FlowRegistry, public_key):
                         dataset_id, now, 'flow-pending', errors)
                     revision = revision['revision']
                     pipelines = planner.plan(revision, contents, **CINFIGS)
-                    for pipeline in pipelines:
+                    for pipeline_id, pipeline_details in pipelines:
                         doc = dict(
-                            pipeline_id=registry.format_identifier(
-                                owner, dataset_name, revision, pipeline[0]),
+                            pipeline_id=pipeline_id,
                             flow_id=registry.format_identifier(
                                 owner, dataset_name, revision),
-                            pipeline_details=pipeline,
+                            pipeline_details=pipeline_details,
                             status='pending',
                             errors=errors,
                             updated_at=now
@@ -86,15 +86,18 @@ def upload(token, contents, registry: FlowRegistry, public_key):
     }
 
 def update(content, registry: FlowRegistry):
-    errors = content['errors']
+
+    errors = content.get('errors')
     now = datetime.datetime.now()
-    pipeline_id = content['pipeline']
+    pipeline_id = content['pipeline_id']
     event = content['event']
+    success = content.get('success')
     pipeline_status = 'pending'
-    if content['success'] and event == 'finished':
-        pipeline_status = 'success'
-    elif (not content['success']) and  event == 'finished':
-        pipeline_status = 'failed'
+    if event == 'finished':
+        if success:
+            pipeline_status = 'success'
+        else:
+            pipeline_status = 'failed'
     doc = dict(
         status=pipeline_status,
         errors=errors,

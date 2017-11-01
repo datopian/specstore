@@ -290,7 +290,7 @@ def test_upload_append(full_registry):
 
 def test_update_pending(full_registry):
     payload = {
-      "pipeline": "me/id",
+      "pipeline_id": "me/id",
       "event": "progress",
       "success": True,
       "errors": []
@@ -303,7 +303,7 @@ def test_update_pending(full_registry):
 
 def test_update_fail(full_registry):
     payload = {
-      "pipeline": "me/id",
+      "pipeline_id": "me/id",
       "event": "finished",
       "success": False,
       "errors": ['error']
@@ -316,7 +316,7 @@ def test_update_fail(full_registry):
 
 def test_update_success(full_registry):
     payload = {
-      "pipeline": "me/id",
+      "pipeline_id": "me/id",
       "event": "finished",
       "success": True,
       "errors": []
