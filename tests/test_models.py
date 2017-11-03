@@ -50,7 +50,7 @@ class ModelsTestCase(unittest.TestCase):
             dataset_id='datahub/id',
             revision=1,
             created_at=now,
-            status='ok',
+            status='success',
             errors=['some not useful errors']
         )
         registry.save_dataset_revision(response)
@@ -66,30 +66,30 @@ class ModelsTestCase(unittest.TestCase):
         self.assertEqual(response, ret)
 
     def test_create_revision(self):
-        registry.create_revision('datahub/revision', now, 'ok', [])
+        registry.create_revision('datahub/revision', now, 'pending', [])
         ret = registry.get_revision_by_dataset_id('datahub/revision')
         self.assertEqual(ret['revision'], 1)
-        registry.create_revision('datahub/revision', now, 'Not OK', ['error'])
+        registry.create_revision('datahub/revision', now, 'success', ['error'])
         ret = registry.get_revision_by_dataset_id('datahub/revision')
         self.assertEqual(ret['revision'], 2)
 
     def test_update_revision(self):
-        registry.create_revision('datahub/update', now, 'ok', [])
+        registry.create_revision('datahub/update', now, 'success', [])
         ret = registry.get_revision_by_revision_id('datahub/update/1')
         self.assertEqual(ret['revision'], 1)
-        self.assertEqual(ret['status'], 'ok')
+        self.assertEqual(ret['status'], 'success')
         registry.update_revision('datahub/update/1', dict(
-            now=now, status='Not OK', errors=['error']))
+            now=now, status='failed', errors=['error']))
         ret = registry.get_revision_by_revision_id('datahub/update/1')
         self.assertEqual(ret['revision'], 1)
-        self.assertEqual(ret['status'], 'Not OK')
+        self.assertEqual(ret['status'], 'failed')
 
     def test_save_and_get_pipelines(self):
         response = dict(
             pipeline_id = 'datahub/dataset',
             flow_id = '1/datahub/id',
             pipeline_details = [],
-            status = 'ok',
+            status = 'success',
             errors = [],
             updated_at = now
         )
@@ -104,7 +104,7 @@ class ModelsTestCase(unittest.TestCase):
             pipeline_id = 'datahub/pipelines',
             flow_id = '2/datahub/id',
             pipeline_details = [],
-            status = 'ok',
+            status = 'failed',
             errors = [],
             updated_at = now
         )
@@ -113,7 +113,7 @@ class ModelsTestCase(unittest.TestCase):
         registry.save_pipeline(response)
         ret = registry.get_pipeline('datahub/pipelines')
         self.assertEqual(response, ret)
-        response['status'] = 'not-ok'
+        response['status'] = 'success'
         registry.update_pipeline('datahub/pipelines', response)
         ret = registry.get_pipeline('datahub/pipelines')
-        self.assertEqual('not-ok', ret['status'])
+        self.assertEqual('success', ret['status'])

@@ -5,6 +5,7 @@ from hashlib import md5
 
 from contextlib import contextmanager
 
+import logging
 from sqlalchemy import DateTime, types
 from sqlalchemy import inspect, desc
 from sqlalchemy.ext.declarative import declarative_base
@@ -31,6 +32,10 @@ class JsonType(types.TypeDecorator):
     def copy(self, **kw):
         return JsonType(self.impl.length)
 
+STATE_SUCCESS = 'success'
+STATE_FAILED = 'failed'
+STATE_PENDING = 'pending'
+STATE_RUNNING = 'running'
 
 class Dataset(Base):
     __tablename__ = 'dataset'
@@ -168,6 +173,7 @@ class FlowRegistry:
     def create_revision(self, dataset_id, created_at, status, errors):
         ret = self.get_revision_by_dataset_id(dataset_id)
         revision = 1 if ret is None else ret['revision'] + 1
+        assert status in (STATE_FAILED, STATE_PENDING, STATE_RUNNING, STATE_SUCCESS)
         document = {
             'revision_id': self.format_identifier(dataset_id, revision),
             'dataset_id': dataset_id,
@@ -225,14 +231,14 @@ class FlowRegistry:
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:
             ret = session.query(Pipelines).filter_by(
-                flow_id=flow_id, status='pending').first()
+                flow_id=flow_id, status=STATE_FAILED).first()
             if ret is not None:
-                return 'pending'
+                return STATE_FAILED
             ret = session.query(Pipelines).filter_by(
-                flow_id=flow_id, status='failed').first()
+                flow_id=flow_id, status=STATE_PENDING).first()
             if ret is not None:
-                return 'failed'
-            return 'success'
+                return STATE_PENDING
+            return STATE_SUCCESS
 
     def update_pipeline(self, identifier, doc):
         with self.session_scope() as session:
@@ -241,7 +247,10 @@ class FlowRegistry:
             if ret is not None:
                 for key, value in doc.items():
                     setattr(ret, key, value)
+            else:
+                logging.warning('Failed to find pipeline %s to update', identifier)
             session.commit()
+            return ret is not None
 
     def create_or_update_pipeline(self, p_id, **args):
         pipeline = self.get_pipeline(p_id)
@@ -253,6 +262,6 @@ class FlowRegistry:
 
     def delete_pipelines(self, flow_id):
         with self.session_scope() as session:
-            ret = session.query(Pipelines).filter_by(
+            session.query(Pipelines).filter_by(
                 flow_id=flow_id).delete()
             session.commit()

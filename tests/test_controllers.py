@@ -47,15 +47,17 @@ def empty_registry():
 def full_registry():
     r = FlowRegistry('sqlite://')
     r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
-    r.save_dataset_revision(dict(revision_id='me/id/1', dataset_id='me/id', revision=1))
+    r.save_dataset_revision(dict(revision_id='me/id/1', dataset_id='me/id', revision=1, status='pending'))
     r.save_pipeline(dict(
         pipeline_id='me/id:non-tabular',
         flow_id='me/id/1',
-        pipeline_details=[]))
+        pipeline_details=[],
+        status='pending'))
     r.save_pipeline(dict(
         pipeline_id='me/id',
         flow_id='me/id/1',
-        pipeline_details=[]))
+        pipeline_details=[],
+        status='pending'))
     return r
 
 # STATUS
@@ -66,116 +68,46 @@ def test_get_fixed_pipeline_state_not_found(empty_registry):
 
 
 def test_get_fixed_pipeline_state_found_no_pipeline(full_registry):
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', status_code=404)
-        ret = get_fixed_pipeline_state('me', 'id', full_registry)
-        assert ret['state'] == "LOADED"
+    ret = get_fixed_pipeline_state('me', 'id', full_registry)
+    assert ret['state'] == "QUEUED"
 
 
-def test_get_fixed_pipeline_state_found_has_pipeline_old_nonfinal(full_registry):
-    response = {
-        'state': 'RUNNING',
-        'stats': {
-            'hash': 'abc'
-        },
-        'reason': "my\nhovercraft\nis\nfull\nof\neels",
-        'pipeline': {
-            'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
+def test_get_fixed_pipeline_state_found_has_pipeline(full_registry):
+    response = dict(
+        state='QUEUED',
+        spec_contents=spec,
+        modified=now.isoformat(),
+        error_log=None,
+        logs=[],
+        stats={
+            'bytes': 0,
+            'count_of_rows': 0,
+            'dataset_name': 'id',
+            'hash': 'b51b29b2b3be2a7498c796e758bfd850'
         }
-    }
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json=response)
-        ret = get_fixed_pipeline_state('me', 'id', full_registry)
-        response['state'] = 'REGISTERED'
-        response['spec_contents'] = spec
-        response['spec_modified'] = now.isoformat()
-        assert ret == response
-
-
-def test_get_fixed_pipeline_state_found_has_pipeline_old_final(full_registry):
-    response = {
-        'state': 'SUCCEEDED',
-        'stats': {
-            'hash': 'abc'
-        },
-        'reason': "my\nhovercraft\nis\nfull\nof\neels",
-        'pipeline': {
-            'update_time': (now + datetime.timedelta(seconds=-1)).isoformat()
-        }
-
-    }
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json=response)
-        ret = get_fixed_pipeline_state('me', 'id', full_registry)
-        response['state'] = 'REGISTERED'
-        response['spec_contents'] = spec
-        response['spec_modified'] = now.isoformat()
-        assert ret == response
-
-
-def test_get_fixed_pipeline_state_found_has_pipeline_current(full_registry):
-    response = {
-        'state': 'RUNNING',
-        'stats': {
-            'hash': 'abc'
-        },
-        'reason': "my\nhovercraft\nis\nfull\nof\neels",
-        'pipeline': {
-            'update_time': now.isoformat()
-        }
-
-    }
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json=response)
-        ret = get_fixed_pipeline_state('me', 'id', full_registry)
-        response['spec_contents'] = spec
-        response['spec_modified'] = now.isoformat()
-        assert ret == response
+    )
+    ret = get_fixed_pipeline_state('me', 'id', full_registry)
+    assert ret == response
 
 
 def test_status_found_has_pipeline_current(full_registry):
-    response = {
-        'state': 'RUNNING',
+    ret = status('me', 'id', full_registry)
+    assert ret == {
+        'state': 'QUEUED',
+        'modified': now.isoformat(),
+        'logs': [],
+        'error_log': None,
+        'spec_contents': spec,
         'stats': {
-            'hash': 'abc'
-        },
-        'reason': "my\n" * 200 + "my",
-        'pipeline': {
-            'update_time': now.isoformat()
+            'bytes': 0,
+            'count_of_rows': 0,
+            'dataset_name': 'id',
+            'hash': 'b51b29b2b3be2a7498c796e758bfd850'
         }
-
     }
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json=response)
-        ret = status('me', 'id', full_registry)
-        assert ret == {
-            'state': 'RUNNING',
-            'modified': response['pipeline']['update_time'],
-            'logs': (["my"] * 50,),
-            'stats': {
-                'hash': 'abc'
-            }
-        }
-
 
 def test_info_found_has_pipeline_current(full_registry):
-    response = {
-        'state': 'RUNNING',
-        'stats': {
-            'hash': 'abc'
-        },
-        'reason': "my\nhovercraft\nis\nfull\nof\neels",
-        'pipeline': {
-            'update_time': now.isoformat()
-        }
-
-    }
-    with requests_mock.Mocker() as mock:
-        mock.get('http://dpp/api/raw/me/id', json=response)
-        ret = info('me', 'id', full_registry)
-        response['spec_contents'] = spec
-        response['spec_modified'] = now.isoformat()
-        assert ret == response
+    return test_status_found_has_pipeline_current(full_registry)
 
 
 # UPLOAD
@@ -212,81 +144,87 @@ def test_upload_bad_token(empty_registry):
 
 
 def test_upload_new(empty_registry: FlowRegistry):
-    token = generate_token('me')
-    ret = upload(token, spec, empty_registry, public_key)
-    assert ret['success']
-    assert ret['id'] == 'me/id'
-    assert ret['errors'] == []
-    specs = list(empty_registry.list_datasets())
-    assert len(specs) == 1
-    first = specs[0]
-    assert first.owner == 'me'
-    assert first.identifier == 'me/id'
-    assert first.spec == spec
-    revision = empty_registry.get_revision_by_dataset_id('me/id')
-    assert revision['revision'] == 1
-    assert revision['status'] == 'flow-pending'
-    pipelines = list(empty_registry.list_pipelines_by_id('me/id/1'))
-    assert len(pipelines) == 5
-    pipeline = pipelines[0]
-    assert pipeline.status == 'pending'
-    pipelines = list(empty_registry.list_pipelines())
-    assert len(pipelines) == 5
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me')
+        ret = upload(token, spec, empty_registry, public_key)
+        assert ret['success']
+        assert ret['id'] == 'me/id'
+        assert ret['errors'] == []
+        specs = list(empty_registry.list_datasets())
+        assert len(specs) == 1
+        first = specs[0]
+        assert first.owner == 'me'
+        assert first.identifier == 'me/id'
+        assert first.spec == spec
+        revision = empty_registry.get_revision_by_dataset_id('me/id')
+        assert revision['revision'] == 1
+        assert revision['status'] == 'pending'
+        pipelines = list(empty_registry.list_pipelines_by_id('me/id/1'))
+        assert len(pipelines) == 5
+        pipeline = pipelines[0]
+        assert pipeline.status == 'pending'
+        pipelines = list(empty_registry.list_pipelines())
+        assert len(pipelines) == 5
 
 
 def test_upload_existing(full_registry):
-    token = generate_token('me')
-    ret = upload(token, spec, full_registry, public_key)
-    assert ret['success']
-    assert ret['id'] == 'me/id'
-    assert ret['errors'] == []
-    specs = list(full_registry.list_datasets())
-    assert len(specs) == 1
-    first = specs[0]
-    assert first.owner == 'me'
-    assert first.identifier == 'me/id'
-    assert first.spec == spec
-    revision = full_registry.get_revision_by_dataset_id('me/id')
-    assert revision['revision'] == 2
-    assert revision['status'] == 'flow-pending'
-    pipelines = list(full_registry.list_pipelines_by_id('me/id/2'))
-    assert len(pipelines) == 5
-    pipeline = pipelines[0]
-    assert pipeline.status == 'pending'
-    ## make pipelines for previous revision are still there
-    pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
-    assert len(pipelines) == 2
-    pipelines = list(full_registry.list_pipelines())
-    assert len(pipelines) == 7
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me')
+        ret = upload(token, spec, full_registry, public_key)
+        assert ret['success']
+        assert ret['id'] == 'me/id'
+        assert ret['errors'] == []
+        specs = list(full_registry.list_datasets())
+        assert len(specs) == 1
+        first = specs[0]
+        assert first.owner == 'me'
+        assert first.identifier == 'me/id'
+        assert first.spec == spec
+        revision = full_registry.get_revision_by_dataset_id('me/id')
+        assert revision['revision'] == 2
+        assert revision['status'] == 'pending'
+        pipelines = list(full_registry.list_pipelines_by_id('me/id/2'))
+        assert len(pipelines) == 5
+        pipeline = pipelines[0]
+        assert pipeline.status == 'pending'
+        ## make pipelines for previous revision are still there
+        pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
+        assert len(pipelines) == 2
+        pipelines = list(full_registry.list_pipelines())
+        assert len(pipelines) == 7
 
 
 def test_upload_append(full_registry):
-    token = generate_token('me2')
-    ret = upload(token, spec2, full_registry, public_key)
-    assert ret['success']
-    assert ret['id'] == 'me2/id2'
-    assert ret['errors'] == []
-    specs = list(full_registry.list_datasets())
-    assert len(specs) == 2
-    first = specs[1]
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me2')
+        ret = upload(token, spec2, full_registry, public_key)
+        assert ret['success']
+        assert ret['id'] == 'me2/id2'
+        assert ret['errors'] == []
+        specs = list(full_registry.list_datasets())
+        assert len(specs) == 2
+        first = specs[1]
 
-    assert first.owner == 'me2'
-    assert first.identifier == 'me2/id2'
-    assert first.spec == spec2
-    second = specs[0]
-    assert second.owner == 'me'
-    assert second.identifier == 'me/id'
-    assert second.spec == spec
+        assert first.owner == 'me2'
+        assert first.identifier == 'me2/id2'
+        assert first.spec == spec2
+        second = specs[0]
+        assert second.owner == 'me'
+        assert second.identifier == 'me/id'
+        assert second.spec == spec
 
-    revision = full_registry.get_revision_by_dataset_id('me2/id2')
-    assert revision['revision'] == 1
-    assert revision['status'] == 'flow-pending'
-    pipelines = list(full_registry.list_pipelines_by_id('me2/id2/1'))
-    assert len(pipelines) == 5
-    pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
-    assert len(pipelines) == 2
-    pipelines = list(full_registry.list_pipelines())
-    assert len(pipelines) == 7
+        revision = full_registry.get_revision_by_dataset_id('me2/id2')
+        assert revision['revision'] == 1
+        assert revision['status'] == 'pending'
+        pipelines = list(full_registry.list_pipelines_by_id('me2/id2/1'))
+        assert len(pipelines) == 5
+        pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
+        assert len(pipelines) == 2
+        pipelines = list(full_registry.list_pipelines())
+        assert len(pipelines) == 7
 
 def test_update_pending(full_registry):
     payload = {
@@ -304,7 +242,7 @@ def test_update_pending(full_registry):
 def test_update_fail(full_registry):
     payload = {
       "pipeline_id": "me/id",
-      "event": "finished",
+      "event": "finish",
       "success": False,
       "errors": ['error']
     }
@@ -314,10 +252,23 @@ def test_update_fail(full_registry):
     revision = full_registry.get_revision_by_revision_id('me/id/1')
     assert revision['status'] == 'failed'
 
+
 def test_update_success(full_registry):
     payload = {
       "pipeline_id": "me/id",
-      "event": "finished",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry)
+    assert ret['status'] == 'pending'
+    assert ret['id'] == 'me/id/1'
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'pending'
+
+    payload = {
+      "pipeline_id": "me/id:non-tabular",
+      "event": "finish",
       "success": True,
       "errors": []
     }
@@ -326,6 +277,7 @@ def test_update_success(full_registry):
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
     assert revision['status'] == 'success'
+
     pipelines = full_registry.list_pipelines_by_id('me/id')
     assert len(list(pipelines)) == 0
     pipelines = full_registry.list_pipelines()
