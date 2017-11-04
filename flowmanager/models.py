@@ -39,8 +39,8 @@ STATE_RUNNING = 'running'
 
 class Dataset(Base):
     __tablename__ = 'dataset'
-    identifier = Column(String(128), primary_key=True)
-    owner = Column(String(128))
+    identifier = Column(String, primary_key=True)
+    owner = Column(String)
     spec = Column(JsonType)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
@@ -48,8 +48,8 @@ class Dataset(Base):
 
 class DatasetRevision(Base):
     __tablename__ = 'dataset_revision'
-    revision_id = Column(String(128), primary_key=True)
-    dataset_id = Column(String(128))
+    revision_id = Column(String, primary_key=True)
+    dataset_id = Column(String)
     revision = Column(Integer)
     status = Column(String(16))
     errors = Column(JsonType)
