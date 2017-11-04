@@ -47,17 +47,27 @@ def empty_registry():
 def full_registry():
     r = FlowRegistry('sqlite://')
     r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
-    r.save_dataset_revision(dict(revision_id='me/id/1', dataset_id='me/id', revision=1, status='pending'))
+    r.save_dataset_revision(dict(
+        revision_id='me/id/1',
+        dataset_id='me/id',
+        revision=1,
+        status='pending',
+        logs=[],
+        stats={}))
     r.save_pipeline(dict(
         pipeline_id='me/id:non-tabular',
         flow_id='me/id/1',
         pipeline_details=[],
-        status='pending'))
+        status='pending',
+        logs=[],
+        stats={}))
     r.save_pipeline(dict(
         pipeline_id='me/id',
         flow_id='me/id/1',
         pipeline_details=[],
-        status='pending'))
+        status='pending',
+        logs=[],
+        stats={}))
     return r
 
 # STATUS
@@ -79,12 +89,7 @@ def test_get_fixed_pipeline_state_found_has_pipeline(full_registry):
         modified=now.isoformat(),
         error_log=None,
         logs=[],
-        stats={
-            'bytes': 0,
-            'count_of_rows': 0,
-            'dataset_name': 'id',
-            'hash': 'b51b29b2b3be2a7498c796e758bfd850'
-        }
+        stats={}
     )
     ret = get_fixed_pipeline_state('me', 'id', full_registry)
     assert ret == response
@@ -95,19 +100,20 @@ def test_status_found_has_pipeline_current(full_registry):
     assert ret == {
         'state': 'QUEUED',
         'modified': now.isoformat(),
-        'logs': [],
         'error_log': None,
-        'spec_contents': spec,
-        'stats': {
-            'bytes': 0,
-            'count_of_rows': 0,
-            'dataset_name': 'id',
-            'hash': 'b51b29b2b3be2a7498c796e758bfd850'
-        }
+        'stats': {}
     }
 
 def test_info_found_has_pipeline_current(full_registry):
-    return test_status_found_has_pipeline_current(full_registry)
+    ret = info('me', 'id', full_registry)
+    assert ret == {
+        'state': 'QUEUED',
+        'modified': now.isoformat(),
+        'logs': [],
+        'error_log': None,
+        'spec_contents': spec,
+        'stats': {}
+    }
 
 
 # UPLOAD
@@ -231,15 +237,25 @@ def test_update_pending(full_registry):
       "pipeline_id": "me/id",
       "event": "progress",
       "success": True,
-      "errors": []
+      "errors": [],
+      "log": ["a", "log", "line"]
     }
     ret = update(payload, full_registry)
     assert ret['status'] == 'pending'
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
     assert revision['status'] == 'pending'
+    assert revision['logs'] == ["a", "log", "line"]
 
 def test_update_fail(full_registry):
+    payload = {
+        "pipeline_id": "me/id",
+        "event": "progress",
+        "success": True,
+        "errors": [],
+        "log": ["a", "log", "line"]
+    }
+    update(payload, full_registry)
     payload = {
       "pipeline_id": "me/id",
       "event": "finish",
@@ -251,6 +267,7 @@ def test_update_fail(full_registry):
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
     assert revision['status'] == 'failed'
+    assert revision['logs'] == ["a", "log", "line"]
 
 
 def test_update_success(full_registry):

@@ -20,7 +20,8 @@ class ModelsTestCase(unittest.TestCase):
             identifier='1',
             owner='datahub',
             spec=spec,
-            updated_at=now
+            updated_at=now,
+            created_at=now
         )
         registry.save_dataset(response)
         ret = registry.get_dataset('non-existing')
@@ -33,7 +34,8 @@ class ModelsTestCase(unittest.TestCase):
             identifier='2',
             owner='datahub',
             spec=spec,
-            updated_at=now
+            updated_at=now,
+            created_at=now
         )
         registry.save_dataset(response)
         registry.create_or_update_dataset('2', 'datahub', spec, now)
@@ -50,8 +52,11 @@ class ModelsTestCase(unittest.TestCase):
             dataset_id='datahub/id',
             revision=1,
             created_at=now,
+            updated_at=now,
             status='success',
-            errors=['some not useful errors']
+            errors=['some not useful errors'],
+            logs=['a','log','line'],
+            stats={'rows':1000}
         )
         registry.save_dataset_revision(response)
         ret = registry.get_revision_by_dataset_id('non-existing')
@@ -91,7 +96,10 @@ class ModelsTestCase(unittest.TestCase):
             pipeline_details = [],
             status = 'success',
             errors = [],
-            updated_at = now
+            logs = [],
+            stats = {},
+            updated_at = now,
+            created_at = now
         )
         registry.save_pipeline(response)
         ret = registry.get_pipeline('non-existing')
@@ -106,7 +114,10 @@ class ModelsTestCase(unittest.TestCase):
             pipeline_details = [],
             status = 'failed',
             errors = [],
-            updated_at = now
+            logs = [],
+            stats = {},
+            updated_at = now,
+            created_at = now
         )
         ret = registry.get_pipeline('datahub/pipelines')
         self.assertIsNone(ret)

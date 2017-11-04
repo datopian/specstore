@@ -52,11 +52,14 @@ def upload(token, contents, registry: FlowRegistry, public_key):
                     dataset_name = dataset_getter(contents)
                     now = datetime.datetime.now()
                     update_time_setter(contents, now)
+
                     dataset_id = registry.format_identifier(owner, dataset_name)
                     registry.create_or_update_dataset(
                         dataset_id, owner, contents, now)
+
                     revision = registry.create_revision(
                         dataset_id, now, STATE_PENDING, errors)
+
                     revision = revision['revision']
                     pipelines = planner.plan(revision, contents, **CONFIGS)
                     for pipeline_id, pipeline_details in pipelines:
@@ -67,6 +70,9 @@ def upload(token, contents, registry: FlowRegistry, public_key):
                             pipeline_details=pipeline_details,
                             status=STATE_PENDING,
                             errors=errors,
+                            logs=[],
+                            stats={},
+                            created_at=now,
                             updated_at=now
                         )
                         registry.save_pipeline(doc)
@@ -90,25 +96,33 @@ def upload(token, contents, registry: FlowRegistry, public_key):
         'errors': errors
     }
 
+
 def update(content, registry: FlowRegistry):
 
-    errors = content.get('errors')
     now = datetime.datetime.now()
+
     pipeline_id = content['pipeline_id']
     if pipeline_id.startswith('./'):
         pipeline_id = pipeline_id[2:]
 
+    errors = content.get('errors')
     event = content['event']
     success = content.get('success')
+    log = content.get('log', [])
+    stats = content.get('stats', {})
+
     pipeline_status = STATE_PENDING
     if event == 'finish':
         if success:
             pipeline_status = STATE_SUCCESS
         else:
             pipeline_status = STATE_FAILED
+
     doc = dict(
         status=pipeline_status,
         errors=errors,
+        stats=stats,
+        log=log,
         updated_at=now
     )
     if registry.update_pipeline(pipeline_id, doc):
@@ -120,6 +134,10 @@ def update(content, registry: FlowRegistry):
         )
         if errors:
             doc['errors'] = errors
+        if stats:
+            doc['stats'] = stats
+        if log:
+            doc['logs'] = log
         registry.update_revision(flow_id, doc)
         if flow_status != STATE_PENDING:
             registry.delete_pipelines(flow_id)
@@ -155,19 +173,16 @@ def get_fixed_pipeline_state(owner, dataset, registry: FlowRegistry):
         modified=spec['updated_at'].isoformat(),
         state=state,
         error_log=revision['errors'],
-        logs=[],
-        stats=dict(
-            bytes=0,
-            count_of_rows=0,
-            dataset_name=dataset,
-            hash='b51b29b2b3be2a7498c796e758bfd850'
-        )
+        logs=revision['logs'],
+        stats=revision['stats']
     )
     return resp
 
 
 def status(owner, dataset, registry: FlowRegistry):
     resp = get_fixed_pipeline_state(owner, dataset, registry)
+    del resp['logs']
+    del resp['spec_contents']
     return resp
 
 

@@ -42,6 +42,7 @@ class Dataset(Base):
     identifier = Column(String(128), primary_key=True)
     owner = Column(String(128))
     spec = Column(JsonType)
+    created_at = Column(DateTime)
     updated_at = Column(DateTime)
 
 
@@ -50,9 +51,12 @@ class DatasetRevision(Base):
     revision_id = Column(String(128), primary_key=True)
     dataset_id = Column(String(128))
     revision = Column(Integer)
-    created_at = Column(DateTime)
     status = Column(String(16))
     errors = Column(JsonType)
+    stats = Column(JsonType)
+    logs = Column(JsonType)
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
 
 
 class Pipelines(Base):
@@ -62,6 +66,9 @@ class Pipelines(Base):
     pipeline_details = Column(JsonType)
     status = Column(String(16))
     errors = Column(JsonType)
+    stats = Column(JsonType)
+    logs = Column(JsonType)
+    created_at = Column(DateTime)
     updated_at = Column(DateTime)
 
 
@@ -106,7 +113,7 @@ class FlowRegistry:
     def format_identifier(*args):
         return '/'.join(str(arg) for arg in args)
 
-    # datasets
+    # Datasets
     def save_dataset(self, dataset):
         with self.session_scope() as session:
             dataset = Dataset(**dataset)
@@ -125,7 +132,6 @@ class FlowRegistry:
             session.expunge_all()
             yield from all
 
-
     def update_dataset(self, identifier, doc):
         with self.session_scope() as session:
             ret = session.query(Dataset).filter_by(identifier=identifier).first()
@@ -143,10 +149,10 @@ class FlowRegistry:
             'updated_at': updated_at
         }
         if dataset is None:
+            document['created_at'] = updated_at
             self.save_dataset(document)
         else:
             self.update_dataset(identifier, document)
-
 
     # Revisions
     def save_dataset_revision(self, dataset_revision):
@@ -179,6 +185,7 @@ class FlowRegistry:
             'dataset_id': dataset_id,
             'revision': revision,
             'created_at': created_at,
+            'updated_at': created_at,
             'status': status,
             'errors': errors
         }
@@ -186,7 +193,6 @@ class FlowRegistry:
         return document
 
     def update_revision(self, revision_id, doc):
-        ret = self.get_revision_by_revision_id(revision_id)
         with self.session_scope() as session:
             ret = session.query(DatasetRevision).filter_by(
                 revision_id=revision_id).first()
