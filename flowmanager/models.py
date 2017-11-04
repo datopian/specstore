@@ -46,7 +46,7 @@ class Dataset(Base):
 
 
 class DatasetRevision(Base):
-    __tablename__ = 'dataset-revision'
+    __tablename__ = 'dataset_revision'
     revision_id = Column(String(128), primary_key=True)
     dataset_id = Column(String(128))
     revision = Column(Integer)
