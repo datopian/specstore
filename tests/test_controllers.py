@@ -167,11 +167,11 @@ def test_upload_new(empty_registry: FlowRegistry):
         assert revision['revision'] == 1
         assert revision['status'] == 'pending'
         pipelines = list(empty_registry.list_pipelines_by_id('me/id/1'))
-        assert len(pipelines) == 5
+        assert len(pipelines) == 6
         pipeline = pipelines[0]
         assert pipeline.status == 'pending'
         pipelines = list(empty_registry.list_pipelines())
-        assert len(pipelines) == 5
+        assert len(pipelines) == 6
 
 
 def test_upload_existing(full_registry):
@@ -192,14 +192,14 @@ def test_upload_existing(full_registry):
         assert revision['revision'] == 2
         assert revision['status'] == 'pending'
         pipelines = list(full_registry.list_pipelines_by_id('me/id/2'))
-        assert len(pipelines) == 5
+        assert len(pipelines) == 6
         pipeline = pipelines[0]
         assert pipeline.status == 'pending'
         ## make pipelines for previous revision are still there
         pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
         assert len(pipelines) == 2
         pipelines = list(full_registry.list_pipelines())
-        assert len(pipelines) == 7
+        assert len(pipelines) == 8
 
 
 def test_upload_append(full_registry):
@@ -226,11 +226,11 @@ def test_upload_append(full_registry):
         assert revision['revision'] == 1
         assert revision['status'] == 'pending'
         pipelines = list(full_registry.list_pipelines_by_id('me2/id2/1'))
-        assert len(pipelines) == 5
+        assert len(pipelines) == 6
         pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
         assert len(pipelines) == 2
         pipelines = list(full_registry.list_pipelines())
-        assert len(pipelines) == 7
+        assert len(pipelines) == 8
 
 def test_update_pending(full_registry):
     payload = {

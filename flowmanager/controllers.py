@@ -13,6 +13,7 @@ CONFIGS = {'allowed_types': [
     'derived/csv',
     'derived/json',
     'derived/zip',
+    'derived/preview',
     'source/tabular',
     'source/non-tabular'
 ]}
