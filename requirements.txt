@@ -1,3 +1,4 @@
+https://github.com/datahq/planner/archive/master.zip
 flask
 flask-cors
 flask-jsonpify
@@ -5,4 +6,3 @@ cryptography
 pyjwt
 requests
 psycopg2
-https://github.com/datahq/planner/archive/master.zip
