@@ -61,8 +61,8 @@ class DatasetRevision(Base):
 
 class Pipelines(Base):
     __tablename__ = 'pipelines'
-    pipeline_id = Column(String(128), primary_key=True)
-    flow_id = Column(String(128))
+    pipeline_id = Column(String(256), primary_key=True)
+    flow_id = Column(String(256))
     pipeline_details = Column(JsonType)
     status = Column(String(16))
     errors = Column(JsonType)

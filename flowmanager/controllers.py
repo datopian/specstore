@@ -1,7 +1,6 @@
 import datetime
 import jwt
 import requests
-import logging
 
 import planner
 from werkzeug.exceptions import NotFound
@@ -107,19 +106,11 @@ def update(content, registry: FlowRegistry):
     if pipeline_id.startswith('./'):
         pipeline_id = pipeline_id[2:]
 
-
-
     errors = content.get('errors')
     event = content['event']
     success = content.get('success')
     log = content.get('log', [])
     stats = content.get('stats', {})
-
-    # Delete me
-    logging.info('===========')
-    logging.info(pipeline_id)
-    logging.info(event)
-    logging.info(success)
 
     pipeline_status = STATE_PENDING
     if event == 'finish':
