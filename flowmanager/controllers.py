@@ -42,7 +42,7 @@ def _verify(auth_token, owner, public_key):
         return False
 
 
-def upload(token, contents, registry: FlowRegistry, public_key):
+def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     errors = []
     dataset_id = None
     if contents is not None:
@@ -62,7 +62,7 @@ def upload(token, contents, registry: FlowRegistry, public_key):
                         dataset_id, now, STATE_PENDING, errors)
 
                     revision = revision['revision']
-                    pipelines = planner.plan(revision, contents, **CONFIGS)
+                    pipelines = planner.plan(revision, contents, **config)
                     for pipeline_id, pipeline_details in pipelines:
                         doc = dict(
                             pipeline_id=pipeline_id,
