@@ -11,3 +11,5 @@ RUN pip3 install -r $APP_PATH/requirements.txt
 ADD . $APP_PATH
 
 USER $GUNICORN_USER
+
+ENTRYPOINT $APP_PATH/startup.sh

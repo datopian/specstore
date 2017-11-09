@@ -14,7 +14,10 @@ from sqlalchemy import Column, Unicode, String, Integer, create_engine
 from sqlalchemy.orm import sessionmaker
 
 # ## SQL DB
+from flowmanager.schedules import calculate_new_schedule
+
 Base = declarative_base()
+
 
 # ## Json as string Type
 class JsonType(types.TypeDecorator):
@@ -37,6 +40,7 @@ STATE_FAILED = 'failed'
 STATE_PENDING = 'pending'
 STATE_RUNNING = 'running'
 
+
 class Dataset(Base):
     __tablename__ = 'dataset'
     identifier = Column(String, primary_key=True)
@@ -44,6 +48,7 @@ class Dataset(Base):
     spec = Column(JsonType)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
+    scheduled_for = Column(DateTime, index=True)
 
 
 class DatasetRevision(Base):
@@ -153,6 +158,19 @@ class FlowRegistry:
             self.save_dataset(document)
         else:
             self.update_dataset(identifier, document)
+
+    def update_dataset_schedule(self, identifier, period_in_seconds, now):
+        dataset = self.get_dataset(identifier)
+        update = dict(
+            scheduled_for=calculate_new_schedule(dataset['scheduled_for'], period_in_seconds, now)
+        )
+        self.update_dataset(identifier, update)
+
+    def get_expired_datasets(self, now):
+        with self.session_scope() as session:
+            all = session.query(Dataset).filter(Dataset.scheduled_for <= now).all()
+            session.expunge_all()
+            yield from all
 
     # Revisions
     def save_dataset_revision(self, dataset_revision):

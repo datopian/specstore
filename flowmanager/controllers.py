@@ -5,6 +5,7 @@ import requests
 import planner
 from werkzeug.exceptions import NotFound
 
+from .schedules import parse_schedule
 from .config import dpp_module, dpp_server
 from .config import dataset_getter, owner_getter, update_time_setter
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED
@@ -42,7 +43,48 @@ def _verify(auth_token, owner, public_key):
         return False
 
 
-def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
+def _internal_upload(owner, contents, registry, config=CONFIGS):
+    errors = []
+    dataset_name = dataset_getter(contents)
+    now = datetime.datetime.now()
+    update_time_setter(contents, now)
+
+    dataset_id = registry.format_identifier(owner, dataset_name)
+    registry.create_or_update_dataset(
+        dataset_id, owner, contents, now)
+    period_in_seconds, schedule_errors = parse_schedule(contents)
+    if len(schedule_errors) == 0:
+        registry.update_dataset_schedule(dataset_id, period_in_seconds, now)
+
+        revision = registry.create_revision(
+            dataset_id, now, STATE_PENDING, errors)
+
+        revision = revision['revision']
+        pipelines = planner.plan(revision, contents, **config)
+        for pipeline_id, pipeline_details in pipelines:
+            doc = dict(
+                pipeline_id=pipeline_id,
+                flow_id=registry.format_identifier(
+                    owner, dataset_name, revision),
+                pipeline_details=pipeline_details,
+                status=STATE_PENDING,
+                errors=errors,
+                logs=[],
+                stats={},
+                created_at=now,
+                updated_at=now
+            )
+            registry.save_pipeline(doc)
+
+        if dpp_server:
+            if requests.get(dpp_server + 'api/refresh').status_code != 200:
+                errors.append('Failed to refresh pipelines status')
+    else:
+        errors.extend(schedule_errors)
+    return dataset_id, errors
+
+
+def upload(token, contents, registry: FlowRegistry, public_key):
     errors = []
     dataset_id = None
     if contents is not None:
@@ -50,38 +92,7 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
         if owner is not None:
             if _verify(token, owner, public_key):
                 try:
-                    dataset_name = dataset_getter(contents)
-                    now = datetime.datetime.now()
-                    update_time_setter(contents, now)
-
-                    dataset_id = registry.format_identifier(owner, dataset_name)
-                    registry.create_or_update_dataset(
-                        dataset_id, owner, contents, now)
-
-                    revision = registry.create_revision(
-                        dataset_id, now, STATE_PENDING, errors)
-
-                    revision = revision['revision']
-                    pipelines = planner.plan(revision, contents, **config)
-                    for pipeline_id, pipeline_details in pipelines:
-                        doc = dict(
-                            pipeline_id=pipeline_id,
-                            flow_id=registry.format_identifier(
-                                owner, dataset_name, revision),
-                            pipeline_details=pipeline_details,
-                            status=STATE_PENDING,
-                            errors=errors,
-                            logs=[],
-                            stats={},
-                            created_at=now,
-                            updated_at=now
-                        )
-                        registry.save_pipeline(doc)
-
-                    if dpp_server:
-                        if requests.get(dpp_server + 'api/refresh').status_code != 200:
-                            errors.append('Failed to refresh pipelines status')
-
+                    dataset_id, errors = _internal_upload(owner, contents, registry)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
             else:

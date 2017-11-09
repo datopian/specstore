@@ -21,7 +21,8 @@ class ModelsTestCase(unittest.TestCase):
             owner='datahub',
             spec=spec,
             updated_at=now,
-            created_at=now
+            created_at=now,
+            scheduled_for=None
         )
         registry.save_dataset(response)
         ret = registry.get_dataset('non-existing')
@@ -35,7 +36,8 @@ class ModelsTestCase(unittest.TestCase):
             owner='datahub',
             spec=spec,
             updated_at=now,
-            created_at=now
+            created_at=now,
+            scheduled_for=None
         )
         registry.save_dataset(response)
         registry.create_or_update_dataset('2', 'datahub', spec, now)
