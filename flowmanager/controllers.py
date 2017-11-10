@@ -84,7 +84,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
     return dataset_id, errors
 
 
-def upload(token, contents, registry: FlowRegistry, public_key):
+def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     errors = []
     dataset_id = None
     if contents is not None:
@@ -92,7 +92,7 @@ def upload(token, contents, registry: FlowRegistry, public_key):
         if owner is not None:
             if _verify(token, owner, public_key):
                 try:
-                    dataset_id, errors = _internal_upload(owner, contents, registry)
+                    dataset_id, errors = _internal_upload(owner, contents, registry, config=config)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
             else:
