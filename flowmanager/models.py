@@ -218,6 +218,7 @@ class FlowRegistry:
                 for key, value in doc.items():
                     setattr(ret, key, value)
             session.commit()
+            return FlowRegistry.object_as_dict(ret)
 
     # Pipelines
     def save_pipeline(self, pipelines):

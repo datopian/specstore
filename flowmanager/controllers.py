@@ -3,6 +3,7 @@ import jwt
 import requests
 
 import planner
+import events
 from werkzeug.exceptions import NotFound
 
 from .schedules import parse_schedule
@@ -150,9 +151,32 @@ def update(content, registry: FlowRegistry):
             doc['stats'] = stats
         if log:
             doc['logs'] = log
-        registry.update_revision(flow_id, doc)
+        revision = registry.update_revision(flow_id, doc)
         if flow_status != STATE_PENDING:
             registry.delete_pipelines(flow_id)
+
+            dataset = registry.get_dataset(revision['dataset_id'])
+            findability = \
+                flow_status == STATE_SUCCESS and \
+                dataset['spec']['meta']['findability'] == 'published'
+            findability = 'published' if findability else 'private'
+            events.send_event(
+                'flow',       # Source of the event
+                event,       # What happened
+                'OK' if flow_status == STATE_SUCCESS else 'FAIL',       # Success indication
+                findability,  # one of "published/private/internal":
+                dataset['owner'],       # Actor
+                dataset_getter(dataset['spec']),   # Dataset in question
+                dataset['spec']['meta']['owner'],      # Owner of the dataset
+                dataset['spec']['meta']['ownerid'],      # Ownerid of the dataset
+                flow_id,      # Related flow id
+                pipeline_id,  # Related pipeline id
+                {
+                    'flow-id': flow_id,
+                    'errors': errors,
+
+                }       # Other payload
+            )
 
         return {
             'status': flow_status,
