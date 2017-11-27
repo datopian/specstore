@@ -12,6 +12,7 @@ from .config import dataset_getter, owner_getter, update_time_setter
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED
 
 CONFIGS = {'allowed_types': [
+    'derived/report',
     'derived/csv',
     'derived/json',
     'derived/zip',
