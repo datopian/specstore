@@ -312,7 +312,8 @@ def test_check_updated_stats(full_registry):
     }
     ret = update(payload, full_registry)
     revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert set(revision['stats']['me/id'].items()) == set(stats.items())
+    assert set(revision['stats']['.datahub']['pipelines']['me/id'].items()) == set(stats.items())
+    assert revision['stats']['bytes'] == 123
 
     more_stats = {"bytes": 321,"count_of_rows": None,"dataset": "stats","hash": "hash"}
     payload = {
@@ -324,8 +325,9 @@ def test_check_updated_stats(full_registry):
     }
     ret = update(payload, full_registry)
     revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert set(revision['stats']['me/id'].items()) == set(stats.items())
-    assert set(revision['stats']['me/id:non-tabular'].items()) == set(more_stats.items())
+    assert set(revision['stats']['.datahub']['pipelines']['me/id'].items()) == set(stats.items())
+    assert set(revision['stats']['.datahub']['pipelines']['me/id:non-tabular'].items()) == set(more_stats.items())
+    assert revision['stats']['bytes'] == 321
 
     # check works if stats are not there
     payload = {
@@ -336,5 +338,6 @@ def test_check_updated_stats(full_registry):
     }
     ret = update(payload, full_registry)
     revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert set(revision['stats']['me/id'].items()) == set(stats.items())
-    assert set(revision['stats']['me/id:non-tabular'].items()) == set(more_stats.items())
+    assert set(revision['stats']['.datahub']['pipelines']['me/id'].items()) == set(stats.items())
+    assert set(revision['stats']['.datahub']['pipelines']['me/id:non-tabular'].items()) == set(more_stats.items())
+    assert revision['stats']['bytes'] == 321

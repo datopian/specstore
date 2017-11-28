@@ -91,26 +91,6 @@ class ModelsTestCase(unittest.TestCase):
         self.assertEqual(ret['revision'], 1)
         self.assertEqual(ret['status'], 'failed')
 
-    def test_get_revision_stats(self):
-        registry.create_revision('datahub/stats', now, 'success', [])
-        ret = registry.get_revision_stats('datahub/stats/1')
-        self.assertIsNone(ret)
-        stats = {
-            'my/pipeline/id': {
-                "bytes": 123,
-                "count_of_rows": 1,
-                "dataset_name": "stats",
-                "hash": "hash"
-            }}
-        doc = dict(
-            status='pending',
-            updated_at=now,
-            stats=stats
-        )
-        registry.update_revision('datahub/stats/1', doc)
-        ret = registry.get_revision_stats('datahub/stats/1')
-        self.assertDictEqual(stats, ret)
-
     def test_save_and_get_pipelines(self):
         response = dict(
             pipeline_id = 'datahub/dataset',
