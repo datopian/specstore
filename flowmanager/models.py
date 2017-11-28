@@ -220,6 +220,7 @@ class FlowRegistry:
             session.commit()
             return FlowRegistry.object_as_dict(ret)
 
+
     # Pipelines
     def save_pipeline(self, pipelines):
         with self.session_scope() as session:
