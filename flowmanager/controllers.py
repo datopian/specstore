@@ -149,7 +149,9 @@ def update(content, registry: FlowRegistry):
         if errors:
             doc['errors'] = errors
         if stats:
-            doc['stats'] = stats
+            revision_stats =  registry.get_revision_stats(flow_id) or  {}
+            revision_stats[pipeline_id] = stats
+            doc['stats'] = revision_stats
         if log:
             doc['logs'] = log
         revision = registry.update_revision(flow_id, doc)

@@ -299,3 +299,42 @@ def test_update_success(full_registry):
     assert len(list(pipelines)) == 0
     pipelines = full_registry.list_pipelines()
     assert len(list(pipelines)) == 0
+
+
+def test_check_updated_stats(full_registry):
+    stats = {"bytes": 123,"count_of_rows": 1,"dataset": "stats","hash": "hash"}
+    payload = {
+      "pipeline_id": "me/id",
+      "event": "finish",
+      "success": True,
+      "errors": [],
+      "stats": stats
+    }
+    ret = update(payload, full_registry)
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert set(revision['stats']['me/id'].items()) == set(stats.items())
+
+    more_stats = {"bytes": 321,"count_of_rows": None,"dataset": "stats","hash": "hash"}
+    payload = {
+      "pipeline_id": "me/id:non-tabular",
+      "event": "finish",
+      "success": True,
+      "errors": [],
+      "stats": more_stats
+    }
+    ret = update(payload, full_registry)
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert set(revision['stats']['me/id'].items()) == set(stats.items())
+    assert set(revision['stats']['me/id:non-tabular'].items()) == set(more_stats.items())
+
+    # check works if stats are not there
+    payload = {
+      "pipeline_id": "me/id:source-tabular",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry)
+    revision = full_registry.get_revision_by_revision_id('me/id/1')
+    assert set(revision['stats']['me/id'].items()) == set(stats.items())
+    assert set(revision['stats']['me/id:non-tabular'].items()) == set(more_stats.items())

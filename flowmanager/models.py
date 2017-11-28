@@ -194,6 +194,14 @@ class FlowRegistry:
                 return FlowRegistry.object_as_dict(ret)
         return None
 
+    def get_revision_stats(self, revision_id):
+        with self.session_scope() as session:
+            ret = session.query(DatasetRevision).filter_by(
+                revision_id=revision_id).first()
+            if ret is not None:
+                return ret.stats
+        return None
+
     def create_revision(self, dataset_id, created_at, status, errors):
         ret = self.get_revision_by_dataset_id(dataset_id)
         revision = 1 if ret is None else ret['revision'] + 1
@@ -219,6 +227,7 @@ class FlowRegistry:
                     setattr(ret, key, value)
             session.commit()
             return FlowRegistry.object_as_dict(ret)
+
 
     # Pipelines
     def save_pipeline(self, pipelines):
