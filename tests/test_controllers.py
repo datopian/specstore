@@ -52,22 +52,19 @@ def full_registry():
         dataset_id='me/id',
         revision=1,
         status='pending',
-        logs=[],
-        stats={}))
+        logs=[]))
     r.save_pipeline(dict(
         pipeline_id='me/id:non-tabular',
         flow_id='me/id/1',
         pipeline_details=[],
         status='pending',
-        logs=[],
-        stats={}))
+        logs=[]))
     r.save_pipeline(dict(
         pipeline_id='me/id',
         flow_id='me/id/1',
         pipeline_details=[],
         status='pending',
-        logs=[],
-        stats={}))
+        logs=[]))
     return r
 
 # STATUS
@@ -89,7 +86,7 @@ def test_get_fixed_pipeline_state_found_has_pipeline(full_registry):
         modified=now.isoformat(),
         error_log=None,
         logs=[],
-        stats={}
+        stats=None
     )
     ret = get_fixed_pipeline_state('me', 'id', full_registry)
     assert ret == response
@@ -101,7 +98,7 @@ def test_status_found_has_pipeline_current(full_registry):
         'state': 'QUEUED',
         'modified': now.isoformat(),
         'error_log': None,
-        'stats': {}
+        'stats': None
     }
 
 def test_info_found_has_pipeline_current(full_registry):
@@ -112,7 +109,7 @@ def test_info_found_has_pipeline_current(full_registry):
         'logs': [],
         'error_log': None,
         'spec_contents': spec,
-        'stats': {}
+        'stats': None
     }
 
 
