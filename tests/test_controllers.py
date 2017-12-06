@@ -164,7 +164,8 @@ def test_upload_no_contents(empty_registry):
     token = generate_token('me')
     ret = upload(token, None, empty_registry, public_key)
     assert not ret['success']
-    assert ret['id'] is None
+    assert ret['dataset_id'] is None
+    assert ret['flow_id'] is None
     assert ret['errors'] == ['Received empty contents (make sure your content-type is correct)']
 
 
@@ -172,14 +173,16 @@ def test_upload_bad_contents(empty_registry):
     token = generate_token('me')
     ret = upload(token, {}, empty_registry, public_key)
     assert not ret['success']
-    assert ret['id'] is None
+    assert ret['dataset_id'] is None
+    assert ret['flow_id'] is None
     assert ret['errors'] == ['Missing owner in spec']
 
 
 def test_upload_no_token(empty_registry):
     ret = upload(None, spec, empty_registry, public_key)
     assert not ret['success']
-    assert ret['id'] is None
+    assert ret['dataset_id'] is None
+    assert ret['flow_id'] is None
     assert ret['errors'] == ['No token or token not authorised for owner']
 
 
@@ -187,7 +190,8 @@ def test_upload_bad_token(empty_registry):
     token = generate_token('mee')
     ret = upload(token, spec, empty_registry, public_key)
     assert not ret['success']
-    assert ret['id'] is None
+    assert ret['dataset_id'] is None
+    assert ret['flow_id'] is None
     assert ret['errors'] == ['No token or token not authorised for owner']
 
 
@@ -197,7 +201,8 @@ def test_upload_new(empty_registry: FlowRegistry):
         token = generate_token('me')
         ret = upload(token, spec, empty_registry, public_key)
         assert ret['success']
-        assert ret['id'] == 'me/id'
+        assert ret['dataset_id'] == 'me/id'
+        assert ret['flow_id'] == 'me/id/1'
         assert ret['errors'] == []
         specs = list(empty_registry.list_datasets())
         assert len(specs) == 1
@@ -222,7 +227,8 @@ def test_upload_existing(full_registry):
         token = generate_token('me')
         ret = upload(token, spec, full_registry, public_key)
         assert ret['success']
-        assert ret['id'] == 'me/id'
+        assert ret['dataset_id'] == 'me/id'
+        assert ret['flow_id'] == 'me/id/2'
         assert ret['errors'] == []
         specs = list(full_registry.list_datasets())
         assert len(specs) == 2
@@ -250,7 +256,8 @@ def test_upload_append(full_registry):
         token = generate_token('me2')
         ret = upload(token, spec2, full_registry, public_key)
         assert ret['success']
-        assert ret['id'] == 'me2/id2'
+        assert ret['dataset_id'] == 'me2/id2'
+        assert ret['flow_id'] == 'me2/id2/1'
         assert ret['errors'] == []
         specs = list(full_registry.list_datasets())
         assert len(specs) == 3
@@ -277,7 +284,7 @@ def test_upload_append(full_registry):
 def test_update_running(full_registry):
     payload = {
       "pipeline_id": "me/id",
-      "event": "running",
+      "event": "finish",
       "success": True,
       "errors": [],
       "log": ["a", "log", "line"]

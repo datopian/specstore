@@ -275,10 +275,10 @@ class FlowRegistry:
             ret_success = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_SUCCESS).first()
             # If not a single success and fail - still queued / pending
-            if (ret_pending is not None) and (ret_pending is None):
+            if (ret_pending is not None) and (ret_success is None):
                 return STATE_PENDING
             # If no fail but at least one success - running / in progress
-            if (ret_pending is not None) and (ret_pending is not None):
+            if (ret_pending is not None) and (ret_success is not None):
                 return STATE_RUNNING
             return STATE_SUCCESS
 

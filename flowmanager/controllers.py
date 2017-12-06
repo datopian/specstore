@@ -51,6 +51,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
     now = datetime.datetime.now()
     update_time_setter(contents, now)
 
+    flow_id = None
     dataset_id = registry.format_identifier(owner, dataset_name)
     registry.create_or_update_dataset(
         dataset_id, owner, contents, now)
@@ -62,12 +63,13 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             dataset_id, now, STATE_PENDING, errors)
 
         revision = revision['revision']
+        flow_id=registry.format_identifier(
+            owner, dataset_name, revision)
         pipelines = planner.plan(revision, contents, **config)
         for pipeline_id, pipeline_details in pipelines:
             doc = dict(
                 pipeline_id=pipeline_id,
-                flow_id=registry.format_identifier(
-                    owner, dataset_name, revision),
+                flow_id=flow_id,
                 pipeline_details=pipeline_details,
                 status=STATE_PENDING,
                 errors=errors,
@@ -83,18 +85,19 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
                 errors.append('Failed to refresh pipelines status')
     else:
         errors.extend(schedule_errors)
-    return dataset_id, errors
+    return dataset_id, flow_id, errors
 
 
 def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     errors = []
     dataset_id = None
+    flow_id = None
     if contents is not None:
         owner = owner_getter(contents)
         if owner is not None:
             if _verify(token, owner, public_key):
                 try:
-                    dataset_id, errors = _internal_upload(owner, contents, registry, config=config)
+                    dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
             else:
@@ -106,7 +109,8 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
 
     return {
         'success': len(errors) == 0,
-        'id': dataset_id,
+        'dataset_id': dataset_id,
+        'flow_id': flow_id,
         'errors': errors
     }
 

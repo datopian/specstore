@@ -86,7 +86,8 @@ A valid spec in JSON form. You can find example Flow-Spec in README of [planer A
 ```javascript=
 {
   "success": true,
-  "id": "<identifier>"
+  "dataset_id": "<dataset-identifier>",
+  "flow_id": "<dataset-identifier-with-revision-number>",
   "errors": [
       "<error-message>"
   ]
