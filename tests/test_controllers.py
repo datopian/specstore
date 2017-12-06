@@ -10,11 +10,9 @@ import requests_mock
 from .config import load_spec
 
 import flowmanager.controllers
-status = flowmanager.controllers.status
 upload = flowmanager.controllers.upload
 update = flowmanager.controllers.update
 info = flowmanager.controllers.info
-get_fixed_pipeline_state = flowmanager.controllers.get_fixed_pipeline_state
 flowmanager.controllers.dpp_server = 'http://dpp/'
 
 os.environ['PKGSTORE_BUCKET'] = 'testing.bucket.com'
@@ -47,12 +45,31 @@ def empty_registry():
 def full_registry():
     r = FlowRegistry('sqlite://')
     r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
+    r.save_dataset(dict(identifier='you/id', owner='you', spec=spec, updated_at=now))
     r.save_dataset_revision(dict(
         revision_id='me/id/1',
         dataset_id='me/id',
         revision=1,
         status='pending',
         logs=[]))
+    r.save_dataset_revision(dict(
+        revision_id='you/id/1',
+        dataset_id='you/id',
+        revision=1,
+        status='pending',
+        logs=[]))
+    r.save_dataset_revision(dict(
+        revision_id='you/id/2',
+        dataset_id='you/id',
+        revision=2,
+        status='success',
+        logs=['this is latest successful']))
+    r.save_dataset_revision(dict(
+        revision_id='you/id/3',
+        dataset_id='you/id',
+        revision=3,
+        status='pending',
+        logs=['this is latest']))
     r.save_pipeline(dict(
         pipeline_id='me/id:non-tabular',
         flow_id='me/id/1',
@@ -69,18 +86,19 @@ def full_registry():
 
 # STATUS
 
-def test_get_fixed_pipeline_state_not_found(empty_registry):
+def test_info_not_found(empty_registry):
     with pytest.raises(NotFound):
-        get_fixed_pipeline_state('me', 'id', empty_registry)
+        info('me', 'id', 1, empty_registry)
 
 
-def test_get_fixed_pipeline_state_found_no_pipeline(full_registry):
-    ret = get_fixed_pipeline_state('me', 'id', full_registry)
+def test_info_found_no_pipeline(full_registry):
+    ret = info('me', 'id', 1, full_registry)
     assert ret['state'] == "QUEUED"
 
 
-def test_get_fixed_pipeline_state_found_has_pipeline(full_registry):
+def test_info_found_has_pipeline(full_registry):
     response = dict(
+        id='me/id/1',
         state='QUEUED',
         spec_contents=spec,
         modified=now.isoformat(),
@@ -88,22 +106,14 @@ def test_get_fixed_pipeline_state_found_has_pipeline(full_registry):
         logs=[],
         stats=None
     )
-    ret = get_fixed_pipeline_state('me', 'id', full_registry)
+    ret = info('me', 'id', 1, full_registry)
     assert ret == response
 
 
-def test_status_found_has_pipeline_current(full_registry):
-    ret = status('me', 'id', full_registry)
-    assert ret == {
-        'state': 'QUEUED',
-        'modified': now.isoformat(),
-        'error_log': None,
-        'stats': None
-    }
-
 def test_info_found_has_pipeline_current(full_registry):
-    ret = info('me', 'id', full_registry)
+    ret = info('me', 'id', 1, full_registry)
     assert ret == {
+        'id': 'me/id/1',
         'state': 'QUEUED',
         'modified': now.isoformat(),
         'logs': [],
@@ -112,6 +122,41 @@ def test_info_found_has_pipeline_current(full_registry):
         'stats': None
     }
 
+def test_grabs_info_for_given_revision_id(full_registry):
+    ret = info('you', 'id', 2, full_registry)
+    assert ret == {
+        'id': 'you/id/2',
+        'state': 'SUCCEEDED',
+        'modified': now.isoformat(),
+        'logs': ['this is latest successful'],
+        'error_log': None,
+        'spec_contents': spec,
+        'stats': None
+    }
+
+def test_grabs_info_for_latest(full_registry):
+    ret = info('you', 'id', 'latest', full_registry)
+    assert ret == {
+        'id': 'you/id/3',
+        'state': 'QUEUED',
+        'modified': now.isoformat(),
+        'logs': ['this is latest'],
+        'error_log': None,
+        'spec_contents': spec,
+        'stats': None
+    }
+
+def test_grabs_info_for_given_revision_id(full_registry):
+    ret = info('you', 'id', 'successful', full_registry)
+    assert ret == {
+        'id': 'you/id/2',
+        'state': 'SUCCEEDED',
+        'modified': now.isoformat(),
+        'logs': ['this is latest successful'],
+        'error_log': None,
+        'spec_contents': spec,
+        'stats': None
+    }
 
 # UPLOAD
 
@@ -160,7 +205,7 @@ def test_upload_new(empty_registry: FlowRegistry):
         assert first.owner == 'me'
         assert first.identifier == 'me/id'
         assert first.spec == spec
-        revision = empty_registry.get_revision_by_dataset_id('me/id')
+        revision = empty_registry.get_revision('me/id')
         assert revision['revision'] == 1
         assert revision['status'] == 'pending'
         pipelines = list(empty_registry.list_pipelines_by_id('me/id/1'))
@@ -180,12 +225,12 @@ def test_upload_existing(full_registry):
         assert ret['id'] == 'me/id'
         assert ret['errors'] == []
         specs = list(full_registry.list_datasets())
-        assert len(specs) == 1
+        assert len(specs) == 2
         first = specs[0]
         assert first.owner == 'me'
         assert first.identifier == 'me/id'
         assert first.spec == spec
-        revision = full_registry.get_revision_by_dataset_id('me/id')
+        revision = full_registry.get_revision('me/id')
         assert revision['revision'] == 2
         assert revision['status'] == 'pending'
         pipelines = list(full_registry.list_pipelines_by_id('me/id/2'))
@@ -208,8 +253,8 @@ def test_upload_append(full_registry):
         assert ret['id'] == 'me2/id2'
         assert ret['errors'] == []
         specs = list(full_registry.list_datasets())
-        assert len(specs) == 2
-        first = specs[1]
+        assert len(specs) == 3
+        first = specs[2]
 
         assert first.owner == 'me2'
         assert first.identifier == 'me2/id2'
@@ -219,7 +264,7 @@ def test_upload_append(full_registry):
         assert second.identifier == 'me/id'
         assert second.spec == spec
 
-        revision = full_registry.get_revision_by_dataset_id('me2/id2')
+        revision = full_registry.get_revision('me2/id2')
         assert revision['revision'] == 1
         assert revision['status'] == 'pending'
         pipelines = list(full_registry.list_pipelines_by_id('me2/id2/1'))

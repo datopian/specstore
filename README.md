@@ -27,7 +27,12 @@ An API server for managing a Source Spec Registry
 
 ### Status
 
-`/source/{identifier}/status`
+`/source/{owner}/{dataset-id}/{revision-number}`
+
+*Note: Also, you can get info about latest and latest successful revisions by hitting following endpoints*
+
+* latest - `/source/{owner}/{dataset-id}/latest`
+* successful - `/source/{owner}/{dataset-id}/successful`
 
 #### Method
 
@@ -37,64 +42,25 @@ An API server for managing a Source Spec Registry
 
 ```javascript=
 {
-   'state': 'LOADED/REGISTERED/INVALID/RUNNING/SUCCEEDED/FAILED',
-   'logs': [
-              'log-line',
-              'log-line', // ...
-           ],
-   'modified': 'flowmanager-timestamp-of-pipeline-data
-}
-```
-
-### Status
-
-`/source/{identifier}/info`
-
-#### Method
-
-`GET`
-
-#### Response
-
-```javascript=
-{
-  "id": "./<pipeline-id>",
-
-  "pipeline": <pipeline>,
-  "source": <source>,
-
-  "message": <short-message>,
+  "id": "<revision-id>",
+  "spec_contents": <source-specifications>,
+  "modified": <last-modified>,
+  "state": <QUEUED|INPROGRESS|SUCCEEDED|FAILED>,
+  "logs": <full-logs>,
   "error_log": [ <error-log-lines> ],
-  "reason": <full-log>,
-
-  "state": "LOADED/REGISTERED/INVALID/RUNNING/SUCCEEDED/FAILED",
-  "success": <last-run-succeeded?>,
-  "trigger": <dirty-task/scheduled>,
-
   "stats": {
       "bytes": <number>,
       "count_of_rows": <number>,
       "dataset_name": <string>,
       "hash": <datapackage-hash>
-  },
-
-  "cache_hash": "c69ee347c6019eeca4dbf66141001c55",
-  "dirty": false,
-
-  "queued": <numeric-timestamp>,
-  "started": <numeric-timestamp>,
-  "updated": <numeric-timestamp>,
-  "last_success": <numeric-timestamp>,
-  "ended": <numeric-timestamp>
+  }
 }
 ```
 
 state definition:
 
-- `LOADED`: In the flowmanager, pipeline not created yet
-- `REGISTERED`: Waiting to run
-- `INVALID`: Problem with the source spec or the pipeline
-- `RUNNING`: Currently running
+- `QUEUED`: In the flowmanager, pipeline not created yet
+- `INPROGRESS`: Waiting to run
 - `SUCCEEDED`: Finished successfully
 - `FAILED`: Failed to run
 

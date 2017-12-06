@@ -178,10 +178,19 @@ class FlowRegistry:
             dataset_revision = DatasetRevision(**dataset_revision)
             session.add(dataset_revision)
 
-    def get_revision_by_dataset_id(self, dataset):
+    def get_revision(self, dataset, revision_id='latest'):
         with self.session_scope() as session:
-            ret = session.query(DatasetRevision).filter_by(dataset_id=dataset)\
-                .order_by(desc(DatasetRevision.revision)).first()
+            if revision_id == 'latest':
+                ret = session.query(DatasetRevision).filter_by(dataset_id=dataset)\
+                    .order_by(desc(DatasetRevision.revision)).first()
+            elif revision_id == 'successful':
+                ret = session.query(DatasetRevision).filter_by(
+                    dataset_id=dataset, status=STATE_SUCCESS)\
+                    .order_by(desc(DatasetRevision.revision)).first()
+            else:
+                ret = session.query(DatasetRevision).filter_by(
+                    dataset_id=dataset, revision=revision_id)\
+                    .order_by(desc(DatasetRevision.revision)).first()
             if ret is not None:
                 return FlowRegistry.object_as_dict(ret)
         return None
@@ -195,7 +204,7 @@ class FlowRegistry:
         return None
 
     def create_revision(self, dataset_id, created_at, status, errors):
-        ret = self.get_revision_by_dataset_id(dataset_id)
+        ret = self.get_revision(dataset_id)
         revision = 1 if ret is None else ret['revision'] + 1
         assert status in (STATE_FAILED, STATE_PENDING, STATE_RUNNING, STATE_SUCCESS)
         document = {

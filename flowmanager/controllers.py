@@ -9,7 +9,7 @@ from werkzeug.exceptions import NotFound
 from .schedules import parse_schedule
 from .config import dpp_module, dpp_server
 from .config import dataset_getter, owner_getter, update_time_setter
-from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED
+from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
 
 CONFIGS = {'allowed_types': [
     'derived/report',
@@ -111,7 +111,7 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     }
 
 
-def update(content, registry: FlowRegistry):
+def update(content, registry: FlowRegistry): #noqa
 
     now = datetime.datetime.now()
 
@@ -200,20 +200,22 @@ def update(content, registry: FlowRegistry):
         }
 
 
-def get_fixed_pipeline_state(owner, dataset, registry: FlowRegistry):
+def info(owner, dataset, revision_id, registry: FlowRegistry):
     dataset_id = FlowRegistry.format_identifier(owner, dataset)
     spec = registry.get_dataset(dataset_id)
     if spec is None:
         raise NotFound()
-    revision = registry.get_revision_by_dataset_id(dataset_id)
+    revision = registry.get_revision(dataset_id, revision_id)
     if revision is None:
         raise NotFound()
     state = {
         STATE_PENDING: 'QUEUED',
+        STATE_RUNNING: 'INPROGRESS',
         STATE_SUCCESS: 'SUCCEEDED',
         STATE_FAILED: 'FAILED',
     }[revision['status']]
     resp = dict(
+        id = revision['revision_id'],
         spec_contents=spec['spec'],
         modified=spec['updated_at'].isoformat(),
         state=state,
@@ -221,16 +223,4 @@ def get_fixed_pipeline_state(owner, dataset, registry: FlowRegistry):
         logs=revision['logs'],
         stats=revision['stats']
     )
-    return resp
-
-
-def status(owner, dataset, registry: FlowRegistry):
-    resp = get_fixed_pipeline_state(owner, dataset, registry)
-    del resp['logs']
-    del resp['spec_contents']
-    return resp
-
-
-def info(owner, dataset, registry: FlowRegistry):
-    resp = get_fixed_pipeline_state(owner, dataset, registry)
     return resp
