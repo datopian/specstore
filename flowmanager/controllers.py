@@ -161,7 +161,7 @@ def update(content, registry: FlowRegistry): #noqa
         if log:
             doc['logs'] = log
         revision = registry.update_revision(flow_id, doc)
-        if flow_status != STATE_PENDING:
+        if (flow_status != STATE_PENDING) and (flow_status != STATE_RUNNING):
             registry.delete_pipelines(flow_id)
 
             dataset = registry.get_dataset(revision['dataset_id'])

@@ -269,10 +269,17 @@ class FlowRegistry:
                 flow_id=flow_id, status=STATE_FAILED).first()
             if ret is not None:
                 return STATE_FAILED
-            ret = session.query(Pipelines).filter_by(
+
+            ret_pending = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_PENDING).first()
-            if ret is not None:
+            ret_success = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_SUCCESS).first()
+            # If not a single success and fail - still queued / pending
+            if (ret_pending is not None) and (ret_pending is None):
                 return STATE_PENDING
+            # If no fail but at least one success - running / in progress
+            if (ret_pending is not None) and (ret_pending is not None):
+                return STATE_RUNNING
             return STATE_SUCCESS
 
     def update_pipeline(self, identifier, doc):

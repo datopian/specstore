@@ -274,19 +274,19 @@ def test_upload_append(full_registry):
         pipelines = list(full_registry.list_pipelines())
         assert len(pipelines) == 8
 
-def test_update_pending(full_registry):
+def test_update_running(full_registry):
     payload = {
       "pipeline_id": "me/id",
-      "event": "progress",
+      "event": "running",
       "success": True,
       "errors": [],
       "log": ["a", "log", "line"]
     }
     ret = update(payload, full_registry)
-    assert ret['status'] == 'pending'
+    assert ret['status'] == 'running'
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert revision['status'] == 'pending'
+    assert revision['status'] == 'running'
     assert revision['logs'] == ["a", "log", "line"]
 
 def test_update_fail(full_registry):
@@ -320,10 +320,10 @@ def test_update_success(full_registry):
       "errors": []
     }
     ret = update(payload, full_registry)
-    assert ret['status'] == 'pending'
+    assert ret['status'] == 'running'
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert revision['status'] == 'pending'
+    assert revision['status'] == 'running'
 
     payload = {
       "pipeline_id": "me/id:non-tabular",
