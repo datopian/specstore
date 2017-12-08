@@ -189,8 +189,7 @@ class FlowRegistry:
                     .order_by(desc(DatasetRevision.revision)).first()
             else:
                 ret = session.query(DatasetRevision).filter_by(
-                    dataset_id=dataset, revision=revision_id)\
-                    .order_by(desc(DatasetRevision.revision)).first()
+                    dataset_id=dataset, revision=revision_id).first()
             if ret is not None:
                 return FlowRegistry.object_as_dict(ret)
         return None
@@ -265,21 +264,27 @@ class FlowRegistry:
 
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:
-            ret = session.query(Pipelines).filter_by(
+            failed = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_FAILED).first()
-            if ret is not None:
+            if failed is not None:
                 return STATE_FAILED
 
-            ret_pending = session.query(Pipelines).filter_by(
-                flow_id=flow_id, status=STATE_PENDING).first()
-            ret_success = session.query(Pipelines).filter_by(
-                flow_id=flow_id, status=STATE_SUCCESS).first()
-            # If not a single success and fail - still queued / pending
-            if (ret_pending is not None) and (ret_success is None):
-                return STATE_PENDING
-            # If no fail but at least one success - running / in progress
-            if (ret_pending is not None) and (ret_success is not None):
+            running = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_RUNNING).first()
+            if running is not None:
                 return STATE_RUNNING
+
+            success = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_SUCCESS).first()
+            pending = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_PENDING).first()
+            if (pending is not None) and (success is not None):
+                return STATE_RUNNING
+
+            # If non of success, failed or running status is queued/pending
+            if (failed is None) and (success is None) and (running is None):
+                return STATE_PENDING
+
             return STATE_SUCCESS
 
     def update_pipeline(self, identifier, doc):

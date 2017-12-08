@@ -59,8 +59,8 @@ An API server for managing a Source Spec Registry
 
 state definition:
 
-- `QUEUED`: In the flowmanager, pipeline not created yet
-- `INPROGRESS`: Waiting to run
+- `QUEUED`: Flow created but not running
+- `INPROGRESS`: Flow is running
 - `SUCCEEDED`: Finished successfully
 - `FAILED`: Failed to run
 
