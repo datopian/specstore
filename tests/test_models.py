@@ -56,6 +56,7 @@ class ModelsTestCase(unittest.TestCase):
             created_at=now,
             updated_at=now,
             status='success',
+            pipelines=None,
             errors=['some not useful errors'],
             logs=['a','log','line'],
             stats={'rows':1000}
@@ -95,6 +96,7 @@ class ModelsTestCase(unittest.TestCase):
         response = dict(
             pipeline_id = 'datahub/dataset',
             flow_id = '1/datahub/id',
+            title=None,
             pipeline_details = [],
             status = 'success',
             errors = [],
@@ -113,6 +115,7 @@ class ModelsTestCase(unittest.TestCase):
         response = dict(
             pipeline_id = 'datahub/pipelines',
             flow_id = '2/datahub/id',
+            title=None,
             pipeline_details = [],
             status = 'failed',
             errors = [],

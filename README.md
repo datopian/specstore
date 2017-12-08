@@ -49,10 +49,33 @@ An API server for managing a Source Spec Registry
   "logs": <full-logs>,
   "error_log": [ <error-log-lines> ],
   "stats": {
-      "bytes": <number>,
-      "count_of_rows": <number>,
-      "dataset_name": <string>,
-      "hash": <datapackage-hash>
+    "bytes": <number>,
+    "count_of_rows": <number>,
+    "dataset_name": <string>,
+    "hash": <datapackage-hash>
+  },
+  "pipelines": {
+    "<pipeline-id-1>": {
+      "title": "Creating CSV",
+      "status": "SUCCEEDED",
+      "stats": null,
+      "error_log": []
+    },
+    "<pipeline-id-2>": {
+      "title": "Creating JSON",
+      "status": "INPROGRESS",
+      "stats": {},
+      "error_log": []
+    },
+    "<pipeline-id-3>": {
+      "title": "Creating ZIP",
+      "status": "FAILED",
+      "stats": {},
+      "error_log": [
+        'error',
+        'logs'
+      ]
+    }
   }
 }
 ```

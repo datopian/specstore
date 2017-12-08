@@ -60,6 +60,7 @@ class DatasetRevision(Base):
     errors = Column(JsonType)
     stats = Column(JsonType)
     logs = Column(JsonType)
+    pipelines = Column(JsonType)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
 
@@ -68,6 +69,7 @@ class Pipelines(Base):
     __tablename__ = 'pipelines'
     pipeline_id = Column(String(256), primary_key=True)
     flow_id = Column(String(256))
+    title = Column(String(16))
     pipeline_details = Column(JsonType)
     status = Column(String(16))
     errors = Column(JsonType)

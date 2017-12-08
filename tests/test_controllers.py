@@ -75,13 +75,15 @@ def full_registry():
         flow_id='me/id/1',
         pipeline_details=[],
         status='pending',
-        logs=[]))
+        logs=[],
+        title='Copying source data'))
     r.save_pipeline(dict(
         pipeline_id='me/id',
         flow_id='me/id/1',
         pipeline_details=[],
         status='pending',
-        logs=[]))
+        logs=[],
+        title='Creating Package'))
     return r
 
 # STATUS
@@ -104,7 +106,8 @@ def test_info_found_has_pipeline(full_registry):
         modified=now.isoformat(),
         error_log=None,
         logs=[],
-        stats=None
+        stats=None,
+        pipelines=None
     )
     ret = info('me', 'id', 1, full_registry)
     assert ret == response
@@ -119,7 +122,8 @@ def test_info_found_has_pipeline_current(full_registry):
         'logs': [],
         'error_log': None,
         'spec_contents': spec,
-        'stats': None
+        'stats': None,
+        'pipelines': None
     }
 
 def test_grabs_info_for_given_revision_id(full_registry):
@@ -131,7 +135,8 @@ def test_grabs_info_for_given_revision_id(full_registry):
         'logs': ['this is latest successful'],
         'error_log': None,
         'spec_contents': spec,
-        'stats': None
+        'stats': None,
+        'pipelines': None
     }
 
 def test_grabs_info_for_latest(full_registry):
@@ -143,7 +148,8 @@ def test_grabs_info_for_latest(full_registry):
         'logs': ['this is latest'],
         'error_log': None,
         'spec_contents': spec,
-        'stats': None
+        'stats': None,
+        'pipelines': None
     }
 
 def test_grabs_info_for_given_revision_id(full_registry):
@@ -155,8 +161,85 @@ def test_grabs_info_for_given_revision_id(full_registry):
         'logs': ['this is latest successful'],
         'error_log': None,
         'spec_contents': spec,
-        'stats': None
+        'stats': None,
+        'pipelines': None
     }
+
+
+def test_updates_and_displays_info_with_pipelines(full_registry):
+    ret = info('me', 'id', 'latest', full_registry)
+
+    # Check empty
+    assert ret['pipelines'] == None
+
+    payload = {
+      "pipeline_id": "me/id",
+      "event": "progress",
+      "success": True,
+      "errors": [],
+      "log": []
+    }
+    update(payload, full_registry)
+    payload = {
+      "pipeline_id": "me/id:non-tabular",
+      "event": "progress",
+      "success": True,
+      "errors": [],
+      "log": []
+    }
+    update(payload, full_registry)
+
+    # check updated
+    ret = info('me', 'id', 'latest', full_registry)
+    assert ret['pipelines'] == {'me/id': {
+            'status': 'INPROGRESS',
+            'stats': {},
+            'error_log': [],
+            'title': 'Creating Package'
+        },
+        'me/id:non-tabular': {
+            'status': 'INPROGRESS',
+            'stats': {},
+            'error_log': [],
+            'title': 'Copying source data'
+        }
+    }
+
+    payload = {
+      "pipeline_id": "me/id",
+      "event": "finish",
+      "success": True,
+      "errors": [],
+      "stats": {'count': 1}
+    }
+    update(payload, full_registry)
+    payload = {
+      "pipeline_id": "me/id:non-tabular",
+      "event": "finish",
+      "success": False,
+      "errors": ['an', 'error', 'log'],
+      "log": []
+    }
+    update(payload, full_registry)
+
+    # upadte and check again
+    ret = info('me', 'id', 'latest', full_registry)
+    assert ret['pipelines'] == {'me/id': {
+            'status': 'SUCCEEDED',
+            "stats": {'count': 1},
+            'error_log': [],
+            'title': 'Creating Package'
+        },
+        'me/id:non-tabular': {
+            'status': 'FAILED',
+            'stats': {},
+            'error_log': ['an', 'error', 'log'],
+            'title': 'Copying source data'
+        }
+    }
+
+    # check flow status is failed
+    assert ret['state'] == 'FAILED'
 
 # UPLOAD
 
@@ -296,6 +379,12 @@ def test_update_running(full_registry):
     assert revision['status'] == 'running'
     assert revision['logs'] == ["a", "log", "line"]
 
+    # pipeline details
+    assert revision['pipelines']['me/id']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id']['stats'] == {}
+    assert revision['pipelines']['me/id']['error_log'] == []
+    assert revision['pipelines']['me/id']['title'] == 'Creating Package'
+
 def test_update_fail(full_registry):
     payload = {
         "pipeline_id": "me/id",
@@ -317,6 +406,12 @@ def test_update_fail(full_registry):
     revision = full_registry.get_revision_by_revision_id('me/id/1')
     assert revision['status'] == 'failed'
     assert revision['logs'] == ["a", "log", "line"]
+
+    # pipeline details
+    assert revision['pipelines']['me/id']['status'] == 'FAILED'
+    assert revision['pipelines']['me/id']['stats'] == {}
+    assert revision['pipelines']['me/id']['error_log'] == ['error']
+    assert revision['pipelines']['me/id']['title'] == 'Creating Package'
 
 
 def test_update_success(full_registry):
@@ -349,44 +444,13 @@ def test_update_success(full_registry):
     pipelines = full_registry.list_pipelines()
     assert len(list(pipelines)) == 0
 
+    # pipeline details
+    assert revision['pipelines']['me/id']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id']['stats'] == {}
+    assert revision['pipelines']['me/id']['error_log'] == []
+    assert revision['pipelines']['me/id']['title'] == 'Creating Package'
 
-def test_check_updated_stats(full_registry):
-    stats = {"bytes": 123,"count_of_rows": 1,"dataset": "stats","hash": "hash"}
-    payload = {
-      "pipeline_id": "me/id",
-      "event": "finish",
-      "success": True,
-      "errors": [],
-      "stats": stats
-    }
-    ret = update(payload, full_registry)
-    revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert set(revision['stats']['.datahub']['pipelines']['me/id'].items()) == set(stats.items())
-    assert revision['stats']['bytes'] == 123
-
-    more_stats = {"bytes": 321,"count_of_rows": None,"dataset": "stats","hash": "hash"}
-    payload = {
-      "pipeline_id": "me/id:non-tabular",
-      "event": "finish",
-      "success": True,
-      "errors": [],
-      "stats": more_stats
-    }
-    ret = update(payload, full_registry)
-    revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert set(revision['stats']['.datahub']['pipelines']['me/id'].items()) == set(stats.items())
-    assert set(revision['stats']['.datahub']['pipelines']['me/id:non-tabular'].items()) == set(more_stats.items())
-    assert revision['stats']['bytes'] == 321
-
-    # check works if stats are not there
-    payload = {
-      "pipeline_id": "me/id:source-tabular",
-      "event": "finish",
-      "success": True,
-      "errors": []
-    }
-    ret = update(payload, full_registry)
-    revision = full_registry.get_revision_by_revision_id('me/id/1')
-    assert set(revision['stats']['.datahub']['pipelines']['me/id'].items()) == set(stats.items())
-    assert set(revision['stats']['.datahub']['pipelines']['me/id:non-tabular'].items()) == set(more_stats.items())
-    assert revision['stats']['bytes'] == 321
+    assert revision['pipelines']['me/id:non-tabular']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:non-tabular']['stats'] == {}
+    assert revision['pipelines']['me/id:non-tabular']['error_log'] == []
+    assert revision['pipelines']['me/id:non-tabular']['title'] == 'Copying source data'

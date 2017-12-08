@@ -70,6 +70,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             doc = dict(
                 pipeline_id=pipeline_id,
                 flow_id=flow_id,
+                title=pipeline_details.get('title'),
                 pipeline_details=pipeline_details,
                 status=STATE_PENDING,
                 errors=errors,
@@ -115,7 +116,7 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     }
 
 
-def update(content, registry: FlowRegistry): #noqa
+def update(content, registry: FlowRegistry):
 
     now = datetime.datetime.now()
 
@@ -129,7 +130,7 @@ def update(content, registry: FlowRegistry): #noqa
     log = content.get('log', [])
     stats = content.get('stats', {})
 
-    pipeline_status = STATE_PENDING
+    pipeline_status = STATE_RUNNING
     if event == 'finish':
         if success:
             pipeline_status = STATE_SUCCESS
@@ -148,22 +149,35 @@ def update(content, registry: FlowRegistry): #noqa
         flow_status = registry.check_flow_status(flow_id)
         doc = dict(
             status = flow_status,
-            updated_at=now
+            updated_at=now,
         )
         if errors:
             doc['errors'] = errors
         if stats:
-            rev = registry.get_revision_by_revision_id(flow_id)
-            revision_stats = rev.get('stats')
-            if revision_stats is None:
-                revision_stats = {}
-            if not len(revision_stats):
-                revision_stats.update({'.datahub': {'pipelines': {}}})
-            revision_stats['.datahub']['pipelines'][pipeline_id] = stats
-            revision_stats.update(stats)
-            doc['stats'] = revision_stats
+            doc['stats'] = stats
         if log:
             doc['logs'] = log
+
+        rev = registry.get_revision_by_revision_id(flow_id)
+        pipeline = registry.get_pipeline(pipeline_id)
+        pipelines = rev.get('pipelines')
+        if pipelines is None:
+            pipelines = {}
+
+        pipeline_state = {
+            STATE_PENDING: 'QUEUED',
+            STATE_RUNNING: 'INPROGRESS',
+            STATE_SUCCESS: 'SUCCEEDED',
+            STATE_FAILED: 'FAILED',
+        }[pipeline_status]
+
+        pipelines[pipeline_id] = dict(
+            title=pipeline.get('title'),
+            status=pipeline_state,
+            stats=stats,
+            error_log=errors,
+        )
+        doc['pipelines'] = pipelines
         revision = registry.update_revision(flow_id, doc)
         if (flow_status != STATE_PENDING) and (flow_status != STATE_RUNNING):
             registry.delete_pipelines(flow_id)
@@ -225,6 +239,7 @@ def info(owner, dataset, revision_id, registry: FlowRegistry):
         state=state,
         error_log=revision['errors'],
         logs=revision['logs'],
-        stats=revision['stats']
+        stats=revision['stats'],
+        pipelines=revision['pipelines']
     )
     return resp
