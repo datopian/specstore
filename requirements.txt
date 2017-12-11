@@ -7,3 +7,5 @@ cryptography
 pyjwt
 requests
 psycopg2
+boto3
+
