@@ -9,7 +9,7 @@ from werkzeug.exceptions import NotFound
 from .schedules import parse_schedule
 from .config import dpp_module, dpp_server
 from .config import dataset_getter, owner_getter, update_time_setter
-from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED
+from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
 
 CONFIGS = {'allowed_types': [
     'derived/report',
@@ -51,6 +51,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
     now = datetime.datetime.now()
     update_time_setter(contents, now)
 
+    flow_id = None
     dataset_id = registry.format_identifier(owner, dataset_name)
     registry.create_or_update_dataset(
         dataset_id, owner, contents, now)
@@ -62,12 +63,14 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             dataset_id, now, STATE_PENDING, errors)
 
         revision = revision['revision']
+        flow_id=registry.format_identifier(
+            owner, dataset_name, revision)
         pipelines = planner.plan(revision, contents, **config)
         for pipeline_id, pipeline_details in pipelines:
             doc = dict(
                 pipeline_id=pipeline_id,
-                flow_id=registry.format_identifier(
-                    owner, dataset_name, revision),
+                flow_id=flow_id,
+                title=pipeline_details.get('title'),
                 pipeline_details=pipeline_details,
                 status=STATE_PENDING,
                 errors=errors,
@@ -83,18 +86,19 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
                 errors.append('Failed to refresh pipelines status')
     else:
         errors.extend(schedule_errors)
-    return dataset_id, errors
+    return dataset_id, flow_id, errors
 
 
 def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     errors = []
     dataset_id = None
+    flow_id = None
     if contents is not None:
         owner = owner_getter(contents)
         if owner is not None:
             if _verify(token, owner, public_key):
                 try:
-                    dataset_id, errors = _internal_upload(owner, contents, registry, config=config)
+                    dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
                 except ValueError as e:
                     errors.append('Validation failed for contents')
             else:
@@ -106,7 +110,8 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
 
     return {
         'success': len(errors) == 0,
-        'id': dataset_id,
+        'dataset_id': dataset_id,
+        'flow_id': flow_id,
         'errors': errors
     }
 
@@ -125,7 +130,7 @@ def update(content, registry: FlowRegistry):
     log = content.get('log', [])
     stats = content.get('stats', {})
 
-    pipeline_status = STATE_PENDING
+    pipeline_status = STATE_RUNNING
     if event == 'finish':
         if success:
             pipeline_status = STATE_SUCCESS
@@ -144,24 +149,37 @@ def update(content, registry: FlowRegistry):
         flow_status = registry.check_flow_status(flow_id)
         doc = dict(
             status = flow_status,
-            updated_at=now
+            updated_at=now,
         )
         if errors:
             doc['errors'] = errors
         if stats:
-            rev = registry.get_revision_by_revision_id(flow_id)
-            revision_stats = rev.get('stats')
-            if revision_stats is None:
-                revision_stats = {}
-            if not len(revision_stats):
-                revision_stats.update({'.datahub': {'pipelines': {}}})
-            revision_stats['.datahub']['pipelines'][pipeline_id] = stats
-            revision_stats.update(stats)
-            doc['stats'] = revision_stats
+            doc['stats'] = stats
         if log:
             doc['logs'] = log
+
+        rev = registry.get_revision_by_revision_id(flow_id)
+        pipeline = registry.get_pipeline(pipeline_id)
+        pipelines = rev.get('pipelines')
+        if pipelines is None:
+            pipelines = {}
+
+        pipeline_state = {
+            STATE_PENDING: 'QUEUED',
+            STATE_RUNNING: 'INPROGRESS',
+            STATE_SUCCESS: 'SUCCEEDED',
+            STATE_FAILED: 'FAILED',
+        }[pipeline_status]
+
+        pipelines[pipeline_id] = dict(
+            title=pipeline.get('title'),
+            status=pipeline_state,
+            stats=stats,
+            error_log=errors,
+        )
+        doc['pipelines'] = pipelines
         revision = registry.update_revision(flow_id, doc)
-        if flow_status != STATE_PENDING:
+        if (flow_status != STATE_PENDING) and (flow_status != STATE_RUNNING):
             registry.delete_pipelines(flow_id)
 
             dataset = registry.get_dataset(revision['dataset_id'])
@@ -200,37 +218,28 @@ def update(content, registry: FlowRegistry):
         }
 
 
-def get_fixed_pipeline_state(owner, dataset, registry: FlowRegistry):
+def info(owner, dataset, revision_id, registry: FlowRegistry):
     dataset_id = FlowRegistry.format_identifier(owner, dataset)
     spec = registry.get_dataset(dataset_id)
     if spec is None:
         raise NotFound()
-    revision = registry.get_revision_by_dataset_id(dataset_id)
+    revision = registry.get_revision(dataset_id, revision_id)
     if revision is None:
         raise NotFound()
     state = {
         STATE_PENDING: 'QUEUED',
+        STATE_RUNNING: 'INPROGRESS',
         STATE_SUCCESS: 'SUCCEEDED',
         STATE_FAILED: 'FAILED',
     }[revision['status']]
     resp = dict(
+        id = revision['revision_id'],
         spec_contents=spec['spec'],
         modified=spec['updated_at'].isoformat(),
         state=state,
         error_log=revision['errors'],
         logs=revision['logs'],
-        stats=revision['stats']
+        stats=revision['stats'],
+        pipelines=revision['pipelines']
     )
-    return resp
-
-
-def status(owner, dataset, registry: FlowRegistry):
-    resp = get_fixed_pipeline_state(owner, dataset, registry)
-    del resp['logs']
-    del resp['spec_contents']
-    return resp
-
-
-def info(owner, dataset, registry: FlowRegistry):
-    resp = get_fixed_pipeline_state(owner, dataset, registry)
     return resp

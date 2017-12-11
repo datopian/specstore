@@ -60,6 +60,7 @@ class DatasetRevision(Base):
     errors = Column(JsonType)
     stats = Column(JsonType)
     logs = Column(JsonType)
+    pipelines = Column(JsonType)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
 
@@ -68,6 +69,7 @@ class Pipelines(Base):
     __tablename__ = 'pipelines'
     pipeline_id = Column(String(256), primary_key=True)
     flow_id = Column(String(256))
+    title = Column(String(16))
     pipeline_details = Column(JsonType)
     status = Column(String(16))
     errors = Column(JsonType)
@@ -178,10 +180,18 @@ class FlowRegistry:
             dataset_revision = DatasetRevision(**dataset_revision)
             session.add(dataset_revision)
 
-    def get_revision_by_dataset_id(self, dataset):
+    def get_revision(self, dataset, revision_id='latest'):
         with self.session_scope() as session:
-            ret = session.query(DatasetRevision).filter_by(dataset_id=dataset)\
-                .order_by(desc(DatasetRevision.revision)).first()
+            if revision_id == 'latest':
+                ret = session.query(DatasetRevision).filter_by(dataset_id=dataset)\
+                    .order_by(desc(DatasetRevision.revision)).first()
+            elif revision_id == 'successful':
+                ret = session.query(DatasetRevision).filter_by(
+                    dataset_id=dataset, status=STATE_SUCCESS)\
+                    .order_by(desc(DatasetRevision.revision)).first()
+            else:
+                ret = session.query(DatasetRevision).filter_by(
+                    dataset_id=dataset, revision=revision_id).first()
             if ret is not None:
                 return FlowRegistry.object_as_dict(ret)
         return None
@@ -195,7 +205,7 @@ class FlowRegistry:
         return None
 
     def create_revision(self, dataset_id, created_at, status, errors):
-        ret = self.get_revision_by_dataset_id(dataset_id)
+        ret = self.get_revision(dataset_id)
         revision = 1 if ret is None else ret['revision'] + 1
         assert status in (STATE_FAILED, STATE_PENDING, STATE_RUNNING, STATE_SUCCESS)
         document = {
@@ -256,14 +266,27 @@ class FlowRegistry:
 
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:
-            ret = session.query(Pipelines).filter_by(
+            failed = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_FAILED).first()
-            if ret is not None:
+            if failed is not None:
                 return STATE_FAILED
-            ret = session.query(Pipelines).filter_by(
+
+            running = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_RUNNING).first()
+            if running is not None:
+                return STATE_RUNNING
+
+            success = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_SUCCESS).first()
+            pending = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_PENDING).first()
-            if ret is not None:
+            if (pending is not None) and (success is not None):
+                return STATE_RUNNING
+
+            # If non of success, failed or running status is queued/pending
+            if (failed is None) and (success is None) and (running is None):
                 return STATE_PENDING
+
             return STATE_SUCCESS
 
     def update_pipeline(self, identifier, doc):

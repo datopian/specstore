@@ -56,15 +56,16 @@ class ModelsTestCase(unittest.TestCase):
             created_at=now,
             updated_at=now,
             status='success',
+            pipelines=None,
             errors=['some not useful errors'],
             logs=['a','log','line'],
             stats={'rows':1000}
         )
         registry.save_dataset_revision(response)
-        ret = registry.get_revision_by_dataset_id('non-existing')
+        ret = registry.get_revision('non-existing')
         self.assertIsNone(ret)
         # check by dataset_id
-        ret = registry.get_revision_by_dataset_id('datahub/id')
+        ret = registry.get_revision('datahub/id')
         self.assertEqual(response, ret)
         # check by revision_id
         response['revision_id'] = 'datahub/id/101'
@@ -74,10 +75,10 @@ class ModelsTestCase(unittest.TestCase):
 
     def test_create_revision(self):
         registry.create_revision('datahub/revision', now, 'pending', [])
-        ret = registry.get_revision_by_dataset_id('datahub/revision')
+        ret = registry.get_revision('datahub/revision')
         self.assertEqual(ret['revision'], 1)
         registry.create_revision('datahub/revision', now, 'success', ['error'])
-        ret = registry.get_revision_by_dataset_id('datahub/revision')
+        ret = registry.get_revision('datahub/revision')
         self.assertEqual(ret['revision'], 2)
 
     def test_update_revision(self):
@@ -95,6 +96,7 @@ class ModelsTestCase(unittest.TestCase):
         response = dict(
             pipeline_id = 'datahub/dataset',
             flow_id = '1/datahub/id',
+            title=None,
             pipeline_details = [],
             status = 'success',
             errors = [],
@@ -113,6 +115,7 @@ class ModelsTestCase(unittest.TestCase):
         response = dict(
             pipeline_id = 'datahub/pipelines',
             flow_id = '2/datahub/id',
+            title=None,
             pipeline_details = [],
             status = 'failed',
             errors = [],

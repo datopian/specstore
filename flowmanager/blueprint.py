@@ -4,7 +4,7 @@ from flask_jsonpify import jsonpify
 
 from .models import FlowRegistry
 
-from .controllers import upload, update, status, info
+from .controllers import upload, update, info
 from .config import auth_server, db_connection_string
 
 
@@ -20,7 +20,6 @@ def make_blueprint():
 
     # Controller Proxies
     upload_controller = upload
-    status_controller = status
     info_controller = info
     update_controller = update
 
@@ -33,9 +32,6 @@ def make_blueprint():
         contents = request.get_json()
         return jsonpify(update_controller(contents, registry))
 
-    def status_(owner, dataset):
-        return jsonpify(status_controller(owner, dataset, registry))
-
     def info_(owner, dataset):
         return jsonpify(info_controller(owner, dataset, registry))
 
@@ -45,9 +41,7 @@ def make_blueprint():
     blueprint.add_url_rule(
         'update', 'upadte', update_, methods=['POST'])
     blueprint.add_url_rule(
-        '<owner>/<dataset>/info', 'info', info_, methods=['GET'])
-    blueprint.add_url_rule(
-        '<owner>/<dataset>/status', 'status', status_, methods=['GET'])
+        '<owner>/<dataset>/<revision>', 'info', info_, methods=['GET'])
 
     # Return blueprint
     return blueprint
