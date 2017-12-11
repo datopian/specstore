@@ -32,8 +32,8 @@ def make_blueprint():
         contents = request.get_json()
         return jsonpify(update_controller(contents, registry))
 
-    def info_(owner, dataset):
-        return jsonpify(info_controller(owner, dataset, registry))
+    def info_(owner, dataset, revision):
+        return jsonpify(info_controller(owner, dataset, revision, registry))
 
     # Register routes
     blueprint.add_url_rule(
