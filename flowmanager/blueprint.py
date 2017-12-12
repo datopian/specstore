@@ -1,3 +1,4 @@
+import logging
 import requests
 from flask import Blueprint, request
 from flask_jsonpify import jsonpify
@@ -12,7 +13,12 @@ def make_blueprint():
     """Create blueprint.
     """
 
-    public_key = requests.get(f'http://{auth_server}/auth/public-key').content
+    auth_pk_url = f'http://{auth_server}/auth/public-key'
+    try:
+        public_key = requests.get(auth_pk_url).content
+    except:
+        logging.error(f'Failed to load public key from {auth_pk_url}!')
+        public_key = ''
     registry = FlowRegistry(db_connection_string)
 
     # Create instance
