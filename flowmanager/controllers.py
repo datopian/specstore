@@ -1,7 +1,6 @@
 import datetime
 import jwt
 import requests
-import logging
 
 import planner
 import events
@@ -118,7 +117,6 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
 
 
 def update(content, registry: FlowRegistry):
-
     now = datetime.datetime.now()
 
     pipeline_id = content['pipeline_id']
@@ -131,19 +129,12 @@ def update(content, registry: FlowRegistry):
     log = content.get('log', [])
     stats = content.get('stats', {})
 
-    logging.info('\n==================')
-    logging.info('pipeline id: %s' % pipeline_id)
-    logging.info('event: %s' % event)
-    logging.info('success: %s' % success)
-
-    pipeline_status = STATE_RUNNING
+    pipeline_status = STATE_PENDING if event=='queue' else STATE_RUNNING
     if event == 'finish':
         if success:
             pipeline_status = STATE_SUCCESS
         else:
             pipeline_status = STATE_FAILED
-
-    logging.info('pipeline status: %s' % pipeline_status)
 
     doc = dict(
         status=pipeline_status,
@@ -152,9 +143,7 @@ def update(content, registry: FlowRegistry):
         log=log,
         updated_at=now
     )
-    logging.info('Doc: %s' % doc)
     if registry.update_pipeline(pipeline_id, doc):
-        logging.info('Updated!')
         flow_id = registry.get_flow_id(pipeline_id)
         flow_status = registry.check_flow_status(flow_id)
         doc = dict(
