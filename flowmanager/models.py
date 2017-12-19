@@ -258,6 +258,13 @@ class FlowRegistry:
             session.expunge_all()
             yield from all
 
+    def list_pipelines_by_flow_and_status(self, flow_id, status=STATE_PENDING):
+        with self.session_scope() as session:
+            all = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=status).all()
+            session.expunge_all()
+            yield from all
+
     def list_pipelines(self):
         with self.session_scope() as session:
             all = session.query(Pipelines).all()
@@ -266,24 +273,27 @@ class FlowRegistry:
 
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:
-            failed = session.query(Pipelines).filter_by(
-                flow_id=flow_id, status=STATE_FAILED).first()
-            if failed is not None:
-                return STATE_FAILED
-
             running = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_RUNNING).first()
+            # at least one running -> Flow in Progress
             if running is not None:
                 return STATE_RUNNING
-
             success = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_SUCCESS).first()
             pending = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_PENDING).first()
+            # at least one pending and success -> Flow in Progress
             if (pending is not None) and (success is not None):
                 return STATE_RUNNING
-
-            # If non of success, failed or running status is queued/pending
+            failed = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_FAILED).first()
+            # at least one pending and failed -> Flow in Progress
+            if (pending is not None) and (failed is not None):
+                return STATE_RUNNING
+            # at least one failed and no pending or running -> Flow Failed
+            if failed is not None:
+                return STATE_FAILED
+            # If non of success, failed or running  -> Flow queued
             if (failed is None) and (success is None) and (running is None):
                 return STATE_PENDING
 

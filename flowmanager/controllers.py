@@ -1,6 +1,7 @@
 import datetime
 import jwt
 import requests
+import logging
 
 import planner
 import events
@@ -116,7 +117,7 @@ def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
     }
 
 
-def update(content, registry: FlowRegistry):
+def update(content, registry: FlowRegistry): #noqa
     now = datetime.datetime.now()
 
     pipeline_id = content['pipeline_id']
@@ -128,6 +129,7 @@ def update(content, registry: FlowRegistry):
     success = content.get('success')
     log = content.get('log', [])
     stats = content.get('stats', {})
+
 
     pipeline_status = STATE_PENDING if event=='queue' else STATE_RUNNING
     if event == 'finish':
@@ -146,6 +148,10 @@ def update(content, registry: FlowRegistry):
     if registry.update_pipeline(pipeline_id, doc):
         flow_id = registry.get_flow_id(pipeline_id)
         flow_status = registry.check_flow_status(flow_id)
+
+        if pipeline_status == STATE_FAILED:
+            update_dependants(flow_id, pipeline_id, registry)
+
         doc = dict(
             status = flow_status,
             updated_at=now,
@@ -242,3 +248,24 @@ def info(owner, dataset, revision_id, registry: FlowRegistry):
         pipelines=revision['pipelines']
     )
     return resp
+
+
+## helpers
+
+
+def update_dependants(flow_id, pipeline_id, registry):
+    for queued_pipeline in \
+        registry.list_pipelines_by_flow_and_status(flow_id):
+        for dep in queued_pipeline.pipeline_details.get('dependencies', []):
+            if dep['pipeline'] == pipeline_id:
+                content = dict(
+                    pipeline_id=queued_pipeline.pipeline_id,
+                    event='finish',
+                    success=False,
+                    errors=[
+                        'Dependency unsuccessful. '
+                        'Cannot run until dependency "{}" is successfully'
+                        'executed'.format(pipeline_id)
+                    ]
+                )
+                update(content, registry)

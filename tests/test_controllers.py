@@ -73,14 +73,65 @@ def full_registry():
     r.save_pipeline(dict(
         pipeline_id='me/id:non-tabular',
         flow_id='me/id/1',
-        pipeline_details=[],
+        pipeline_details={},
         status='pending',
         logs=[],
         title='Copying source data'))
     r.save_pipeline(dict(
         pipeline_id='me/id',
         flow_id='me/id/1',
-        pipeline_details=[],
+        pipeline_details={},
+        status='pending',
+        logs=[],
+        title='Creating Package'))
+    return r
+
+@pytest.fixture
+def full_registry_with_deps():
+    r = FlowRegistry('sqlite://')
+    r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
+    r.save_dataset_revision(dict(
+        revision_id='me/id/1',
+        dataset_id='me/id',
+        revision=1,
+        status='pending',
+        logs=[]))
+    r.save_pipeline(dict(
+        pipeline_id='me/id:csv',
+        flow_id='me/id/1',
+        pipeline_details={'dependencies': []},
+        status='pending',
+        logs=[],
+        title='Creating CSV'))
+    r.save_pipeline(dict(
+        pipeline_id='me/id:json',
+        flow_id='me/id/1',
+        pipeline_details={'dependencies': []},
+        status='pending',
+        logs=[],
+        title='Creating JSON'))
+    r.save_pipeline(dict(
+        pipeline_id='me/id:zip',
+        flow_id='me/id/1',
+        pipeline_details={'dependencies': [{'pipeline': 'me/id:csv'}]},
+        status='pending',
+        logs=[],
+        title='Creating ZIP'))
+    r.save_pipeline(dict(
+        pipeline_id='me/id:preview',
+        flow_id='me/id/1',
+        pipeline_details={'dependencies': [{'pipeline': 'me/id:json'}]},
+        status='pending',
+        logs=[],
+        title='Generating Preview'))
+    r.save_pipeline(dict(
+        pipeline_id='me/id',
+        flow_id='me/id/1',
+        pipeline_details={'dependencies': [
+            {'pipeline': 'me/id:csv'},
+            {'pipeline': 'me/id:json'},
+            {'pipeline': 'me/id:preview'},
+            {'pipeline': 'me/id:zip'}]},
         status='pending',
         logs=[],
         title='Creating Package'))
@@ -240,6 +291,48 @@ def test_updates_and_displays_info_with_pipelines(full_registry):
 
     # check flow status is failed
     assert ret['state'] == 'FAILED'
+
+def test_all_pipeline_statuses_are_updated_if_failed(full_registry):
+    payload = {
+        "pipeline_id": "me/id",
+        "event": "progress",
+        "success": True,
+        "errors": [],
+        "log": ["a", "log", "line"]
+    }
+    update(payload, full_registry)
+    payload = {
+      "pipeline_id": "me/id",
+      "event": "finish",
+      "success": False,
+      "errors": ['error']
+    }
+    update(payload, full_registry)
+    payload = {
+      "pipeline_id": "me/id:non-tabular",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    update(payload, full_registry)
+
+    ret = info('me', 'id', 'latest', full_registry)
+
+    assert ret['pipelines'] == {'me/id:non-tabular': {
+            'status': 'SUCCEEDED',
+            "stats": {},
+            'error_log': [],
+            'title': 'Copying source data'
+        },
+        'me/id': {
+            'status': 'FAILED',
+            'stats': {},
+            'error_log': ['error'],
+            'title': 'Creating Package'
+        }
+    }
+
+
 
 # UPLOAD
 
@@ -401,6 +494,13 @@ def test_update_fail(full_registry):
       "errors": ['error']
     }
     ret = update(payload, full_registry)
+    payload = {
+      "pipeline_id": "me/id:non-tabular",
+      "event": "finish",
+      "success": True,
+      "errors": ['error']
+    }
+    ret = update(payload, full_registry)
     assert ret['status'] == 'failed'
     assert ret['id'] == 'me/id/1'
     revision = full_registry.get_revision_by_revision_id('me/id/1')
@@ -454,3 +554,139 @@ def test_update_success(full_registry):
     assert revision['pipelines']['me/id:non-tabular']['stats'] == {}
     assert revision['pipelines']['me/id:non-tabular']['error_log'] == []
     assert revision['pipelines']['me/id:non-tabular']['title'] == 'Copying source data'
+
+
+def test_update_failed_with_deps(full_registry_with_deps):
+    payload = {
+      "pipeline_id": "me/id:json",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+    assert ret['status'] == 'running'
+    revision = full_registry_with_deps.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'running'
+    payload = {
+      "pipeline_id": "me/id:csv",
+      "event": "finish",
+      "success": False,
+      "errors": ['error']
+    }
+    ret = update(payload, full_registry_with_deps)
+    assert ret['status'] == 'running'
+    revision = full_registry_with_deps.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'running'
+
+    payload = {
+      "pipeline_id": "me/id:preview",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+    assert ret['status'] == 'failed'
+    revision = full_registry_with_deps.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'failed'
+
+    pipelines = full_registry_with_deps.list_pipelines_by_id('me/id/1')
+    assert len(list(pipelines)) == 0
+    pipelines = full_registry_with_deps.list_pipelines()
+    assert len(list(pipelines)) == 0
+
+    # pipeline details
+    assert revision['pipelines']['me/id:csv']['status'] == 'FAILED'
+    assert revision['pipelines']['me/id:csv']['stats'] == {}
+    assert revision['pipelines']['me/id:csv']['error_log'] == ['error']
+
+    assert revision['pipelines']['me/id:zip']['status'] == 'FAILED'
+    assert revision['pipelines']['me/id:zip']['stats'] == {}
+    assert revision['pipelines']['me/id:zip']['error_log'] == \
+        ['Dependency unsuccessful. Cannot run until dependency "me/id:csv" is successfullyexecuted']
+
+    assert revision['pipelines']['me/id']['status'] == 'FAILED'
+    assert revision['pipelines']['me/id']['stats'] == {}
+    assert revision['pipelines']['me/id']['error_log'] == \
+        ['Dependency unsuccessful. Cannot run until dependency "me/id:csv" is successfullyexecuted']
+
+    assert revision['pipelines']['me/id:json']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:json']['stats'] == {}
+    assert revision['pipelines']['me/id:json']['error_log'] == []
+
+    assert revision['pipelines']['me/id:preview']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:preview']['stats'] == {}
+    assert revision['pipelines']['me/id:preview']['error_log'] == []
+
+
+def test_update_success_with_deps(full_registry_with_deps):
+    payload = {
+      "pipeline_id": "me/id:json",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+
+    payload = {
+      "pipeline_id": "me/id:csv",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+
+    payload = {
+      "pipeline_id": "me/id:preview",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+
+    payload = {
+      "pipeline_id": "me/id:zip",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+    assert ret['status'] == 'running'
+    revision = full_registry_with_deps.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'running'
+
+    payload = {
+      "pipeline_id": "me/id",
+      "event": "finish",
+      "success": True,
+      "errors": []
+    }
+    ret = update(payload, full_registry_with_deps)
+    assert ret['status'] == 'success'
+    revision = full_registry_with_deps.get_revision_by_revision_id('me/id/1')
+    assert revision['status'] == 'success'
+
+    pipelines = full_registry_with_deps.list_pipelines_by_id('me/id/1')
+    assert len(list(pipelines)) == 0
+    pipelines = full_registry_with_deps.list_pipelines()
+    assert len(list(pipelines)) == 0
+
+    # pipeline details
+    assert revision['pipelines']['me/id:csv']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:csv']['stats'] == {}
+    assert revision['pipelines']['me/id:csv']['error_log'] == []
+
+    assert revision['pipelines']['me/id:zip']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:zip']['stats'] == {}
+    assert revision['pipelines']['me/id:zip']['error_log'] == []
+
+    assert revision['pipelines']['me/id']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id']['stats'] == {}
+    assert revision['pipelines']['me/id']['error_log'] == []
+
+    assert revision['pipelines']['me/id:json']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:json']['stats'] == {}
+    assert revision['pipelines']['me/id:json']['error_log'] == []
+
+    assert revision['pipelines']['me/id:preview']['status'] == 'SUCCEEDED'
+    assert revision['pipelines']['me/id:preview']['stats'] == {}
+    assert revision['pipelines']['me/id:preview']['error_log'] == []
