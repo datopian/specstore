@@ -258,6 +258,13 @@ class FlowRegistry:
             session.expunge_all()
             yield from all
 
+    def list_pipelines_by_flow_and_status(self, flow_id, status=STATE_PENDING):
+        with self.session_scope() as session:
+            all = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=status).all()
+            session.expunge_all()
+            yield from all
+
     def list_pipelines(self):
         with self.session_scope() as session:
             all = session.query(Pipelines).all()
@@ -266,11 +273,6 @@ class FlowRegistry:
 
     def check_flow_status(self, flow_id):
         with self.session_scope() as session:
-            failed = session.query(Pipelines).filter_by(
-                flow_id=flow_id, status=STATE_FAILED).first()
-            if failed is not None:
-                return STATE_FAILED
-
             running = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_RUNNING).first()
             if running is not None:
@@ -280,13 +282,17 @@ class FlowRegistry:
                 flow_id=flow_id, status=STATE_SUCCESS).first()
             pending = session.query(Pipelines).filter_by(
                 flow_id=flow_id, status=STATE_PENDING).first()
-            if (pending is not None) and (success is not None):
-                return STATE_RUNNING
+            failed = session.query(Pipelines).filter_by(
+                flow_id=flow_id, status=STATE_FAILED).first()
 
-            # If non of success, failed or running status is queued/pending
-            if (failed is None) and (success is None) and (running is None):
-                return STATE_PENDING
-
+            if pending is not None:
+              if (success is not None) or (failed is not None):
+                 return STATE_RUNNING
+              else:
+                 return STATE_PENDING
+            else:
+              if failed is not None:
+                  return STATE_FAILED
             return STATE_SUCCESS
 
     def update_pipeline(self, identifier, doc):
