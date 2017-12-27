@@ -190,6 +190,8 @@ class FlowRegistry:
                     dataset_id=dataset, status=STATE_SUCCESS)\
                     .order_by(desc(DatasetRevision.revision)).first()
             else:
+                if not isinstance(revision_id, int):
+                    return None
                 ret = session.query(DatasetRevision).filter_by(
                     dataset_id=dataset, revision=revision_id).first()
             if ret is not None:

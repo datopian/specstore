@@ -64,6 +64,8 @@ class ModelsTestCase(unittest.TestCase):
         registry.save_dataset_revision(response)
         ret = registry.get_revision('non-existing')
         self.assertIsNone(ret)
+        ret = registry.get_revision('datahub/id', 'not-valid-id')
+        self.assertIsNone(ret)
         # check by dataset_id
         ret = registry.get_revision('datahub/id')
         self.assertEqual(response, ret)
