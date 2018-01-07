@@ -1,11 +1,13 @@
 import os
 import json
 import datetime
+import logging
 from hashlib import md5
 
 from contextlib import contextmanager
 
-import logging
+import boto3
+from botocore.exceptions import ClientError
 from sqlalchemy import DateTime, types
 from sqlalchemy import inspect, desc
 from sqlalchemy.ext.declarative import declarative_base
@@ -324,3 +326,41 @@ class FlowRegistry:
             session.query(Pipelines).filter_by(
                 flow_id=flow_id).delete()
             session.commit()
+
+
+# S3
+
+def get_s3_client():
+    endpoint_url = os.environ.get("S3_ENDPOINT_URL")
+    s3_client = boto3.client('s3',
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                endpoint_url=endpoint_url
+                )
+    if endpoint_url:
+        try:
+            s3 = boto3.resource('s3',
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                endpoint_url=endpoint_url)
+            s3.create_bucket(Bucket=os.environ['PKGSTORE_BUCKET'])
+            bucket = s3.Bucket(os.environ['PKGSTORE_BUCKET'])
+            bucket.Acl().put(ACL='public-read')
+        except:
+            logging.exception('Failed to create the bucket')
+    return s3_client
+
+
+def get_descriptor(flow_id):
+    client = get_s3_client()
+    try:
+        obj = client.get_object(
+            Bucket=os.environ.get('PKGSTORE_BUCKET'),
+            Key='{}/datapackage.json'.format(flow_id)
+        )
+        return json.loads(obj['Body'].read().decode('utf-8'))
+    except ClientError as ex:
+        if ex.response['Error']['Code'] == 'NoSuchKey':
+            return None
+        else:
+            raise ex
