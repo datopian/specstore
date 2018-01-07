@@ -16,22 +16,22 @@ DATASETS_DOCTYPE = 'dataset'
 
 SCHEMA = {
     'fields': [
-        {'name': 'id', 'type': 'string'},
-        {'name': 'name', 'type': 'string'},
-        {'name': 'title', 'type': 'string'},
-        {'name': 'description', 'type': 'string'},
+        {'name': 'id', 'type': 'string', 'analyzer': 'keyword'},
+        {'name': 'name', 'type': 'string', 'analyzer': 'keyword'},
+        {'name': 'title', 'type': 'string', 'analyzer': 'simple'},
+        {'name': 'description', 'type': 'string', 'analyzer': 'standard'},
         {'name': 'datapackage', 'type': 'object', 'es:schema': {
             'fields': [
-                {'name': 'readme', 'type': 'string'}
+                {'name': 'readme', 'type': 'string', 'analyzer': 'standard'}
             ]
         }},
         {'name': 'datahub', 'type': 'object',
          'es:schema': {
              'fields': [
-                 {'name': 'owner', 'type': 'string'},
-                 {'name': 'ownerid', 'type': 'string'},
-                 {'name': 'findability', 'type': 'string'},
-                 {'name': 'flowid', 'type': 'string'},
+                 {'name': 'owner', 'type': 'string', 'analyzer': 'keyword'},
+                 {'name': 'ownerid', 'type': 'string', 'analyzer': 'keyword'},
+                 {'name': 'findability', 'type': 'string', 'analyzer': 'keyword'},
+                 {'name': 'flowid', 'type': 'string', 'analyzer': 'keyword'},
                  {'name': 'stats', 'type': 'object', 'es:schema': {
                     'fields': [
                         {'name': 'rowcount', 'type': 'integer'},
@@ -42,23 +42,6 @@ SCHEMA = {
     ],
     'primaryKey': ['id']
 }
-
-
-def normalize(obj):
-    if isinstance(obj, (dict, LazyJsonLine)):
-        return dict(
-            (k, normalize(v))
-            for k, v in obj.items()
-        )
-    elif isinstance(obj, (str, int, float, bool, datetime.date)):
-        return obj
-    elif isinstance(obj, decimal.Decimal):
-        return float(obj)
-    elif isinstance(obj, (list, set)):
-        return [normalize(x) for x in obj]
-    elif obj is None:
-        return None
-    assert False, "Don't know how to handle object (%s) %r" % (type(obj), obj)
 
 
 def _send(es: elasticsearch.Elasticsearch,
@@ -77,14 +60,14 @@ def _send(es: elasticsearch.Elasticsearch,
     storage.create(
         DATASETS_INDEX_NAME, [(DATASETS_DOCTYPE, SCHEMA)], always_recreate=False)
 
-    list(storage.write(DATASETS_INDEX_NAME, DATASETS_DOCTYPE, [normalize(body)],
-                             primary_key, as_generator=True))
+    list(storage.write(DATASETS_INDEX_NAME, DATASETS_DOCTYPE, [body],
+                             primary_key, as_generator=False))
 
-class EventSender():
+class DataSetSender():
     def __init__(self):
         self.es = elasticsearch.Elasticsearch(hosts=[ELASTICSEARCH_HOST])
 
     def __call__(self, *args, **kwargs):
         tpe.submit(_send, self.es, *args)
 
-send_dataset = EventSender()
+send_dataset = DataSetSender()
