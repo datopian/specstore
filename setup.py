@@ -10,8 +10,8 @@ def read(*paths):
     fullpath = os.path.join(basedir, *paths)
     contents = io.open(fullpath, encoding='utf-8').read().strip()
     return contents
-    
-    
+
+
 # Prepare
 PACKAGE = 'flowmanager'
 NAME = 'flowmanager'
@@ -32,7 +32,8 @@ TESTS_REQUIRE = [
     'pytest',
     'pytest-cov',
     'mock',
-    'requests-mock==1.3.0'
+    'requests-mock==1.3.0',
+    'moto'
 ]
 README = read('README.md')
 VERSION = read(PACKAGE, 'VERSION')
