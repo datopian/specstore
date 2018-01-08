@@ -1,11 +1,11 @@
 https://github.com/datahq/events/archive/master.zip
 https://github.com/datahq/planner/archive/master.zip
+boto3
+cryptography
 flask
 flask-cors
 flask-jsonpify
-cryptography
+psycopg2
 pyjwt
 requests
-psycopg2
-boto3
-
+tableschema-elasticsearch<1.0

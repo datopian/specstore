@@ -22,7 +22,8 @@ INSTALL_REQUIRES = [
     'pyjwt',
     'cryptography',
     'psycopg2',
-    'requests'
+    'requests',
+    'tableschema-elasticsearch<1.0'
 ]
 TESTS_REQUIRE = [
     'pylama',
