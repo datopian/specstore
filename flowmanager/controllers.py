@@ -10,7 +10,9 @@ from werkzeug.exceptions import NotFound
 from .schedules import parse_schedule
 from .config import dpp_module, dpp_server
 from .config import dataset_getter, owner_getter, update_time_setter
+from .datasets import send_dataset
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
+from .models import get_descriptor
 
 CONFIGS = {'allowed_types': [
     'derived/report',
@@ -209,6 +211,16 @@ def update(content, registry: FlowRegistry): #noqa
 
                 }       # Other payload
             )
+        if flow_status == STATE_SUCCESS:
+            descriptor = get_descriptor(flow_id)
+            if descriptor is not None:
+                send_dataset(
+                    descriptor.get('id'),
+                    descriptor.get('name'),
+                    descriptor.get('title'),
+                    descriptor.get('description'),
+                    descriptor.get('datahub'),
+                    descriptor)
 
         return {
             'status': flow_status,

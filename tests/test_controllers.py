@@ -1,9 +1,12 @@
 import datetime
+import json
 import jwt
 import pytest
 import os
+import requests
+import time
 
-from flowmanager.models import FlowRegistry
+from flowmanager.models import FlowRegistry, get_descriptor, get_s3_client
 from werkzeug.exceptions import NotFound
 import requests_mock
 
@@ -515,6 +518,19 @@ def test_update_fail(full_registry):
 
 
 def test_update_success(full_registry):
+    datapackage= {
+        "id": "datahub/dataset",
+        "name": "testing-dataset",
+        "title": "Testing Dataset",
+        "description": "Test description",
+        "datahub": {"owner": "owner", "stats": {"bytes": 1}}
+    }
+    s3 = get_s3_client()
+    s3.put_object(
+        Bucket=os.environ['PKGSTORE_BUCKET'],
+        Key='me/id/1/datapackage.json',
+        Body=json.dumps(datapackage))
+
     payload = {
       "pipeline_id": "me/id",
       "event": "finish",
@@ -554,6 +570,33 @@ def test_update_success(full_registry):
     assert revision['pipelines']['me/id:non-tabular']['stats'] == {}
     assert revision['pipelines']['me/id:non-tabular']['error_log'] == []
     assert revision['pipelines']['me/id:non-tabular']['title'] == 'Copying source data'
+
+    # Test exported to Elasticsearch
+    time.sleep(5)
+    res = requests.get('http://localhost:9200/datahub/_search')
+    assert res.status_code == 200
+
+    meta = res.json()
+    hits = [hit['_source'] for hit in meta['hits']['hits']
+        if hit['_source']['datapackage']['name'] == 'testing-dataset']
+
+    assert len(hits) == 1
+
+    exp = {
+        "id": "datahub/dataset",
+        "name": "testing-dataset",
+        "title": "Testing Dataset",
+        "description": "Test description",
+        "datahub": {"owner": "owner", "stats": {"bytes": 1}},
+        "datapackage": {
+            "id": "datahub/dataset",
+            "name": "testing-dataset",
+            "title": "Testing Dataset",
+            "description": "Test description",
+            "datahub": {"owner": "owner", "stats": {"bytes": 1}}
+        }
+    }
+    assert hits[0] == exp
 
 
 def test_update_failed_with_deps(full_registry_with_deps):

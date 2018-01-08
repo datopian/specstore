@@ -1,7 +1,11 @@
 import datetime
+import json
+import os
 import unittest
 
-from flowmanager.models import FlowRegistry
+import boto3
+
+from flowmanager.models import FlowRegistry, get_descriptor, get_s3_client
 
 registry = FlowRegistry('sqlite://')
 
@@ -135,3 +139,28 @@ class ModelsTestCase(unittest.TestCase):
         registry.update_pipeline('datahub/pipelines', response)
         ret = registry.get_pipeline('datahub/pipelines')
         self.assertEqual('success', ret['status'])
+
+
+class S3ModelsTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.datapackage={
+            "id": "datahub/dataset",
+            "name": "testing-dataset",
+            "title": "Testing Dataset",
+            "description": "Test description",
+            "datahub": {}
+        }
+        s3 = get_s3_client()
+        s3.put_object(
+            Bucket=os.environ['PKGSTORE_BUCKET'],
+            Key='datahub/dataset/1/datapackage.json',
+            Body=json.dumps(cls.datapackage))
+
+    def test_get_descriptor(self):
+        descriptor = get_descriptor('datahub/dataset/1')
+        assert self.datapackage == descriptor
+
+    def test_get_descriptor_returns_none_if_not_found(self):
+        descriptor = get_descriptor('datahub/dataset/2')
+        self.assertIsNone(descriptor)

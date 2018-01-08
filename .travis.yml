@@ -1,6 +1,9 @@
 language:
   python
 
+services:
+  - elasticsearch
+
 python:
   - 3.6
 
@@ -9,6 +12,12 @@ install:
 
 script:
   - make test
+
+before_script:
+  - moto_server &
+  - sleep 30
+  - curl localhost:9200
+  - curl localhost:5000
 
 after_success:
   - coveralls
