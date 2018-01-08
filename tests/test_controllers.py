@@ -572,7 +572,7 @@ def test_update_success(full_registry):
     assert revision['pipelines']['me/id:non-tabular']['title'] == 'Copying source data'
 
     # Test exported to Elasticsearch
-    time.sleep(2)
+    time.sleep(5)
     res = requests.get('http://localhost:9200/datahub/_search')
     assert res.status_code == 200
 

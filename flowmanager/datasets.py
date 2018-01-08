@@ -6,6 +6,7 @@ import elasticsearch
 from concurrent.futures import ThreadPoolExecutor
 
 from tableschema_elasticsearch import Storage
+from tableschema_elasticsearch.mappers import MappingGenerator
 from datapackage_pipelines.utilities.extended_json import LazyJsonLine
 
 tpe = ThreadPoolExecutor(max_workers=1)
@@ -44,6 +45,17 @@ SCHEMA = {
 }
 
 
+class AnalyzerForMappingGenerator(MappingGenerator):
+
+    @classmethod
+    def _convert_type(cls, schema_type, field, prefix):
+        prop = super(AnalyzerForMappingGenerator, cls)._convert_type(schema_type, field, prefix)
+        analyzer = field.get('analyzer')
+        if analyzer is not None:
+            prop['analyzer'] = analyzer
+        return prop
+
+
 def _send(es: elasticsearch.Elasticsearch,
                             id, name, title, description, datahub, datapackage):
     body = {
@@ -58,7 +70,11 @@ def _send(es: elasticsearch.Elasticsearch,
     primary_key = SCHEMA['primaryKey']
     storage = Storage(es)
     storage.create(
-        DATASETS_INDEX_NAME, [(DATASETS_DOCTYPE, SCHEMA)], always_recreate=False)
+                DATASETS_INDEX_NAME,
+                [(DATASETS_DOCTYPE, SCHEMA)],
+                always_recreate=False,
+                mapping_generator_cls=AnalyzerForMappingGenerator
+            )
 
     list(storage.write(DATASETS_INDEX_NAME, DATASETS_DOCTYPE, [body],
                              primary_key, as_generator=False))
