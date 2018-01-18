@@ -83,7 +83,8 @@ def upload(token, contents,
         if owner is not None:
             permissions = verifyer.extract_permissions(token)
             if permissions and permissions.get('userid') == owner:
-                max_datasets = permissions.get('max_dataset_num', 0)
+                limits = permissions.get('permissions')
+                max_datasets = limits.get('max_dataset_num', 0)
                 current_datasets = registry.num_datasets_for_owner(owner)
                 if current_datasets < max_datasets:
                     try:
@@ -91,7 +92,7 @@ def upload(token, contents,
                     except ValueError as e:
                         errors.append('Validation failed for contents')
                 else:
-                    errors.append('Max datasets for user exceeded plan limit')
+                    errors.append('Max datasets for user exceeded plan limit (%d)' % max_datasets)
             else:
                 errors.append('No token or token not authorised for owner')
         else:
