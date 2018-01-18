@@ -2,6 +2,7 @@ import logging
 import requests
 from flask import Blueprint, request
 from flask_jsonpify import jsonpify
+from auth.lib import Verifyer
 
 from .models import FlowRegistry
 
@@ -13,12 +14,7 @@ def make_blueprint():
     """Create blueprint.
     """
 
-    auth_pk_url = f'http://{auth_server}/auth/public-key'
-    try:
-        public_key = requests.get(auth_pk_url).content
-    except:
-        logging.error(f'Failed to load public key from {auth_pk_url}!')
-        public_key = ''
+    verifyer = Verifyer(auth_endpoint=f'http://{auth_server}/auth/public-key')
     registry = FlowRegistry(db_connection_string)
 
     # Create instance
@@ -32,7 +28,7 @@ def make_blueprint():
     def upload_():
         token = request.headers.get('auth-token') or request.values.get('jwt')
         contents = request.get_json()
-        return jsonpify(upload_controller(token, contents, registry, public_key))
+        return jsonpify(upload_controller(token, contents, registry, verifyer))
 
     def update_():
         contents = request.get_json()

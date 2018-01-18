@@ -1,4 +1,6 @@
 import datetime
+
+import auth
 import jwt
 import requests
 import logging
@@ -23,29 +25,6 @@ CONFIGS = {'allowed_types': [
     'source/tabular',
     'source/non-tabular'
 ]}
-
-
-def _verify(auth_token, owner, public_key):
-    """Verify Auth Token.
-    :param auth_token: Authentication token to verify
-    :param owner: dataset owner
-    """
-    if not auth_token or not owner:
-        return False
-    try:
-        token = jwt.decode(auth_token.encode('ascii'),
-                           public_key,
-                           algorithm='RS256')
-        # TODO: check service in the future
-        has_permission = True
-        # has_permission = token.get('permissions', {}) \
-        #     .get('datapackage-upload', False)
-        # service = token.get('service')
-        # has_permission = has_permission and service == 'os.datastore'
-        has_permission = has_permission and owner == token.get('userid')
-        return has_permission
-    except jwt.InvalidTokenError:
-        return False
 
 
 def _internal_upload(owner, contents, registry, config=CONFIGS):
@@ -92,18 +71,27 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
     return dataset_id, flow_id, errors
 
 
-def upload(token, contents, registry: FlowRegistry, public_key, config=CONFIGS):
+def upload(token, contents,
+           registry: FlowRegistry,
+           verifyer: auth.lib.Verifyer,
+           config=CONFIGS):
     errors = []
     dataset_id = None
     flow_id = None
     if contents is not None:
         owner = owner_getter(contents)
         if owner is not None:
-            if _verify(token, owner, public_key):
-                try:
-                    dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
-                except ValueError as e:
-                    errors.append('Validation failed for contents')
+            permissions = verifyer.extract_permissions(token)
+            if permissions and permissions.get('userid') == owner:
+                max_datasets = permissions.get('max_dataset_num', 0)
+                current_datasets = registry.num_datasets_for_owner(owner)
+                if current_datasets < max_datasets:
+                    try:
+                        dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
+                    except ValueError as e:
+                        errors.append('Validation failed for contents')
+                else:
+                    errors.append('Max datasets for user exceeded plan limit')
             else:
                 errors.append('No token or token not authorised for owner')
         else:
