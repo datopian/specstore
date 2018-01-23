@@ -141,6 +141,11 @@ class FlowRegistry:
             session.expunge_all()
             yield from all
 
+    def num_datasets_for_owner(self, owner):
+        with self.session_scope() as session:
+            count = session.query(Dataset).filter_by(owner=owner).count()
+            return count
+
     def update_dataset(self, identifier, doc):
         with self.session_scope() as session:
             ret = session.query(Dataset).filter_by(identifier=identifier).first()

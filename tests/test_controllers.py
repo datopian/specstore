@@ -1,5 +1,7 @@
 import datetime
 import json
+
+import auth
 import jwt
 import pytest
 import os
@@ -31,8 +33,10 @@ now = datetime.datetime.now()
 def generate_token(owner):
     ret = {
         'userid': owner,
-        'permissions': {},
-        'service': ''
+        'permissions': {
+            'max_dataset_num': 10
+        },
+        'service': 'source'
     }
     token = jwt.encode(ret, private_key, algorithm='RS256').decode('ascii')
     return token
@@ -341,7 +345,7 @@ def test_all_pipeline_statuses_are_updated_if_failed(full_registry):
 
 def test_upload_no_contents(empty_registry):
     token = generate_token('me')
-    ret = upload(token, None, empty_registry, public_key)
+    ret = upload(token, None, empty_registry, auth.lib.Verifyer(public_key=public_key))
     assert not ret['success']
     assert ret['dataset_id'] is None
     assert ret['flow_id'] is None
@@ -350,7 +354,7 @@ def test_upload_no_contents(empty_registry):
 
 def test_upload_bad_contents(empty_registry):
     token = generate_token('me')
-    ret = upload(token, {}, empty_registry, public_key)
+    ret = upload(token, {}, empty_registry, auth.lib.Verifyer(public_key=public_key))
     assert not ret['success']
     assert ret['dataset_id'] is None
     assert ret['flow_id'] is None
@@ -358,7 +362,7 @@ def test_upload_bad_contents(empty_registry):
 
 
 def test_upload_no_token(empty_registry):
-    ret = upload(None, spec, empty_registry, public_key)
+    ret = upload(None, spec, empty_registry, auth.lib.Verifyer(public_key=public_key))
     assert not ret['success']
     assert ret['dataset_id'] is None
     assert ret['flow_id'] is None
@@ -367,7 +371,7 @@ def test_upload_no_token(empty_registry):
 
 def test_upload_bad_token(empty_registry):
     token = generate_token('mee')
-    ret = upload(token, spec, empty_registry, public_key)
+    ret = upload(token, spec, empty_registry, auth.lib.Verifyer(public_key=public_key))
     assert not ret['success']
     assert ret['dataset_id'] is None
     assert ret['flow_id'] is None
@@ -378,8 +382,8 @@ def test_upload_new(empty_registry: FlowRegistry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/refresh', status_code=200)
         token = generate_token('me')
-        ret = upload(token, spec, empty_registry, public_key)
-        assert ret['success']
+        ret = upload(token, spec, empty_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['success'], repr(ret['errors'])
         assert ret['dataset_id'] == 'me/id'
         assert ret['flow_id'] == 'me/id/1'
         assert ret['errors'] == []
@@ -404,8 +408,8 @@ def test_upload_existing(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/refresh', status_code=200)
         token = generate_token('me')
-        ret = upload(token, spec, full_registry, public_key)
-        assert ret['success']
+        ret = upload(token, spec, full_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['success'], repr(ret['errors'])
         assert ret['dataset_id'] == 'me/id'
         assert ret['flow_id'] == 'me/id/2'
         assert ret['errors'] == []
@@ -433,8 +437,8 @@ def test_upload_append(full_registry):
     with requests_mock.Mocker() as mock:
         mock.get('http://dpp/api/refresh', status_code=200)
         token = generate_token('me2')
-        ret = upload(token, spec2, full_registry, public_key)
-        assert ret['success']
+        ret = upload(token, spec2, full_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['success'], repr(ret['errors'])
         assert ret['dataset_id'] == 'me2/id2'
         assert ret['flow_id'] == 'me2/id2/1'
         assert ret['errors'] == []
