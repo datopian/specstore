@@ -356,7 +356,7 @@ def get_s3_client():
     return s3_client
 
 
-def get_descriptor(flow_id):
+def get_descriptor(flow_id) -> dict:
     client = get_s3_client()
     try:
         obj = client.get_object(
