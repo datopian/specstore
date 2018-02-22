@@ -69,8 +69,8 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             )
             registry.save_pipeline(doc)
 
-        runner.start(None, yaml.dump(pipeline_spec).encode('utf-8'), 
-                     status_cb=PipelineStatusCallback(registry))
+        runner.start(None, yaml.dump(pipeline_spec).encode('utf-8'),
+                     status_cb=PipelineStatusCallback(registry), verbosity=1)
     else:
         errors.extend(schedule_errors)
     return dataset_id, flow_id, errors
@@ -120,8 +120,8 @@ class PipelineStatusCallback:
         self.registry = flowregistry
 
     def __call__(self, pipeline_id, state, errors=None, stats=None): #noqa
-        logging.info('Status %s: %s (errors#=%d, stats=%r)', 
-                     pipeline_id, state, len(errors) if errors is not None else 0, 
+        logging.info('Status %s: %s (errors#=%d, stats=%r)',
+                     pipeline_id, state, len(errors) if errors is not None else 0,
                      stats)
         now = datetime.datetime.now()
         registry = self.registry
@@ -279,7 +279,7 @@ def update_dependants(flow_id, pipeline_id, registry):
         registry.list_pipelines_by_flow_and_status(flow_id):
         for dep in queued_pipeline.pipeline_details.get('dependencies', []):
             if dep['pipeline'] == pipeline_id:
-                cb(queued_pipeline.pipeline_id, 
+                cb(queued_pipeline.pipeline_id,
                    'FAILED',
                    errors=[
                     'Dependency unsuccessful. '
