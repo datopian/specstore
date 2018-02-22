@@ -8,9 +8,6 @@ auth_server = os.environ.get('AUTH_SERVER')
 # Database connection string
 db_connection_string = os.environ.get('DATABASE_URL')
 
-# Datapackage Pipelines server (http://host:post/)
-dpp_server = os.environ.get('DPP_URL')
-
 # Datapackage Pipelines Module
 dpp_module = 'assembler'
 

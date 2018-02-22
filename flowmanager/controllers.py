@@ -4,13 +4,15 @@ import auth
 import jwt
 import requests
 import logging
+import yaml
 
 import planner
 import events
 from werkzeug.exceptions import NotFound
+from dpp_runner.lib import DppRunner
 
 from .schedules import parse_schedule
-from .config import dpp_module, dpp_server
+from .config import dpp_module
 from .config import dataset_getter, owner_getter, update_time_setter
 from .datasets import send_dataset
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
@@ -25,6 +27,8 @@ CONFIGS = {'allowed_types': [
     'source/tabular',
     'source/non-tabular'
 ]}
+
+runner = DppRunner()
 
 
 def _internal_upload(owner, contents, registry, config=CONFIGS):
@@ -48,7 +52,9 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
         flow_id=registry.format_identifier(
             owner, dataset_name, revision)
         pipelines = planner.plan(revision, contents, **config)
-        for pipeline_id, pipeline_details in pipelines:
+        pipeline_spec = dict(pipelines)
+        for pipeline_id, pipeline_details in pipeline_spec.items():
+            pipeline_spec[pipeline_id]
             doc = dict(
                 pipeline_id=pipeline_id,
                 flow_id=flow_id,
@@ -63,9 +69,8 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             )
             registry.save_pipeline(doc)
 
-        if dpp_server:
-            if requests.get(dpp_server + 'api/refresh').status_code != 200:
-                errors.append('Failed to refresh pipelines status')
+        runner.start(None, yaml.dump(pipeline_spec).encode('utf-8'), 
+                     status_cb=PipelineStatusCallback(registry))
     else:
         errors.extend(schedule_errors)
     return dataset_id, flow_id, errors
@@ -110,120 +115,131 @@ def upload(token, contents,
     }
 
 
-def update(content, registry: FlowRegistry): #noqa
-    now = datetime.datetime.now()
+class PipelineStatusCallback:
+    def __init__(self, flowregistry: FlowRegistry):
+        self.registry = flowregistry
 
-    pipeline_id = content['pipeline_id']
-    if pipeline_id.startswith('./'):
-        pipeline_id = pipeline_id[2:]
+    def __call__(self, pipeline_id, state, errors=None, stats=None): #noqa
+        logging.info('Status %s: %s (errors#=%d, stats=%r)', 
+                     pipeline_id, state, len(errors) if errors is not None else 0, 
+                     stats)
+        now = datetime.datetime.now()
+        registry = self.registry
 
-    errors = content.get('errors')
-    event = content['event']
-    success = content.get('success')
-    log = content.get('log', [])
-    stats = content.get('stats', {})
+        pipeline_id = pipeline_id
+        if pipeline_id.startswith('./'):
+            pipeline_id = pipeline_id[2:]
 
-
-    pipeline_status = STATE_PENDING if event=='queue' else STATE_RUNNING
-    if event == 'finish':
-        if success:
-            pipeline_status = STATE_SUCCESS
+        errors = errors
+        if state in ('SUCCESS', 'FAILED'):
+            event = 'finish'
         else:
-            pipeline_status = STATE_FAILED
+            event = 'progress'
+        success = state == 'SUCCESS'
+        log = []
+        stats = stats if stats is not None else {}
 
-    doc = dict(
-        status=pipeline_status,
-        errors=errors,
-        stats=stats,
-        log=log,
-        updated_at=now
-    )
-    if registry.update_pipeline(pipeline_id, doc):
-        flow_id = registry.get_flow_id(pipeline_id)
-        flow_status = registry.check_flow_status(flow_id)
 
-        if pipeline_status == STATE_FAILED:
-            update_dependants(flow_id, pipeline_id, registry)
+        pipeline_status = STATE_PENDING if event=='queue' else STATE_RUNNING
+        if event == 'finish':
+            if success:
+                pipeline_status = STATE_SUCCESS
+            else:
+                pipeline_status = STATE_FAILED
 
         doc = dict(
-            status = flow_status,
-            updated_at=now,
-        )
-        if errors:
-            doc['errors'] = errors
-        if stats:
-            doc['stats'] = stats
-        if log:
-            doc['logs'] = log
-
-        rev = registry.get_revision_by_revision_id(flow_id)
-        pipeline = registry.get_pipeline(pipeline_id)
-        pipelines = rev.get('pipelines')
-        if pipelines is None:
-            pipelines = {}
-
-        pipeline_state = {
-            STATE_PENDING: 'QUEUED',
-            STATE_RUNNING: 'INPROGRESS',
-            STATE_SUCCESS: 'SUCCEEDED',
-            STATE_FAILED: 'FAILED',
-        }[pipeline_status]
-
-        pipelines[pipeline_id] = dict(
-            title=pipeline.get('title'),
-            status=pipeline_state,
+            status=pipeline_status,
+            errors=errors,
             stats=stats,
-            error_log=errors,
+            log=log,
+            updated_at=now
         )
-        doc['pipelines'] = pipelines
-        revision = registry.update_revision(flow_id, doc)
-        if (flow_status != STATE_PENDING) and (flow_status != STATE_RUNNING):
-            registry.delete_pipelines(flow_id)
+        if registry.update_pipeline(pipeline_id, doc):
+            flow_id = registry.get_flow_id(pipeline_id)
+            flow_status = registry.check_flow_status(flow_id)
 
-            dataset = registry.get_dataset(revision['dataset_id'])
-            findability = \
-                flow_status == STATE_SUCCESS and \
-                dataset['spec']['meta']['findability'] == 'published'
-            findability = 'published' if findability else 'private'
-            events.send_event(
-                'flow',       # Source of the event
-                event,       # What happened
-                'OK' if flow_status == STATE_SUCCESS else 'FAIL',       # Success indication
-                findability,  # one of "published/private/internal":
-                dataset['owner'],       # Actor
-                dataset_getter(dataset['spec']),   # Dataset in question
-                dataset['spec']['meta']['owner'],      # Owner of the dataset
-                dataset['spec']['meta']['ownerid'],      # Ownerid of the dataset
-                flow_id,      # Related flow id
-                pipeline_id,  # Related pipeline id
-                {
-                    'flow-id': flow_id,
-                    'errors': errors,
+            if pipeline_status == STATE_FAILED:
+                update_dependants(flow_id, pipeline_id, registry)
 
-                }       # Other payload
+            doc = dict(
+                status = flow_status,
+                updated_at=now,
             )
-        if flow_status == STATE_SUCCESS:
-            descriptor = get_descriptor(flow_id)
-            if descriptor is not None:
-                send_dataset(
-                    descriptor.get('id'),
-                    descriptor.get('name'),
-                    descriptor.get('title'),
-                    descriptor.get('description'),
-                    descriptor.get('datahub'),
-                    descriptor)
+            if errors:
+                doc['errors'] = errors
+            if stats:
+                doc['stats'] = stats
+            if log:
+                doc['logs'] = log
 
-        return {
-            'status': flow_status,
-            'id': flow_id,
-            'errors': errors
-        }
-    else:
-        return {
-            'status': None,
-            'id': None,
-            'errors': ['pipeline not found']
-        }
+            rev = registry.get_revision_by_revision_id(flow_id)
+            pipeline = registry.get_pipeline(pipeline_id)
+            pipelines = rev.get('pipelines')
+            if pipelines is None:
+                pipelines = {}
+
+            pipeline_state = {
+                STATE_PENDING: 'QUEUED',
+                STATE_RUNNING: 'INPROGRESS',
+                STATE_SUCCESS: 'SUCCEEDED',
+                STATE_FAILED: 'FAILED',
+            }[pipeline_status]
+
+            pipelines[pipeline_id] = dict(
+                title=pipeline.get('title'),
+                status=pipeline_state,
+                stats=stats,
+                error_log=errors,
+            )
+            doc['pipelines'] = pipelines
+            revision = registry.update_revision(flow_id, doc)
+            if (flow_status != STATE_PENDING) and (flow_status != STATE_RUNNING):
+                registry.delete_pipelines(flow_id)
+
+                dataset = registry.get_dataset(revision['dataset_id'])
+                findability = \
+                    flow_status == STATE_SUCCESS and \
+                    dataset['spec']['meta']['findability'] == 'published'
+                findability = 'published' if findability else 'private'
+                events.send_event(
+                    'flow',       # Source of the event
+                    event,       # What happened
+                    'OK' if flow_status == STATE_SUCCESS else 'FAIL',       # Success indication
+                    findability,  # one of "published/private/internal":
+                    dataset['owner'],       # Actor
+                    dataset_getter(dataset['spec']),   # Dataset in question
+                    dataset['spec']['meta']['owner'],      # Owner of the dataset
+                    dataset['spec']['meta']['ownerid'],      # Ownerid of the dataset
+                    flow_id,      # Related flow id
+                    pipeline_id,  # Related pipeline id
+                    {
+                        'flow-id': flow_id,
+                        'errors': errors,
+
+                    }       # Other payload
+                )
+            if flow_status == STATE_SUCCESS:
+                descriptor : dict = get_descriptor(flow_id)
+                if descriptor is not None:
+                    send_dataset(
+                        descriptor.get('id'),
+                        descriptor.get('name'),
+                        descriptor.get('title'),
+                        descriptor.get('description'),
+                        descriptor.get('datahub'),
+                        descriptor)
+
+            return {
+                'status': flow_status,
+                'id': flow_id,
+                'errors': errors
+            }
+        else:
+            return {
+                'status': None,
+                'id': None,
+                'errors': ['pipeline not found']
+            }
 
 
 def info(owner, dataset, revision_id, registry: FlowRegistry):
@@ -240,6 +256,7 @@ def info(owner, dataset, revision_id, registry: FlowRegistry):
         STATE_SUCCESS: 'SUCCEEDED',
         STATE_FAILED: 'FAILED',
     }[revision['status']]
+    pipelines = revision['pipelines']
     resp = dict(
         id = revision['revision_id'],
         spec_contents=spec['spec'],
@@ -248,7 +265,7 @@ def info(owner, dataset, revision_id, registry: FlowRegistry):
         error_log=revision['errors'],
         logs=revision['logs'],
         stats=revision['stats'],
-        pipelines=revision['pipelines']
+        pipelines=pipelines if pipelines is not None else {}
     )
     return resp
 
@@ -257,18 +274,15 @@ def info(owner, dataset, revision_id, registry: FlowRegistry):
 
 
 def update_dependants(flow_id, pipeline_id, registry):
+    cb = PipelineStatusCallback(registry)
     for queued_pipeline in \
         registry.list_pipelines_by_flow_and_status(flow_id):
         for dep in queued_pipeline.pipeline_details.get('dependencies', []):
             if dep['pipeline'] == pipeline_id:
-                content = dict(
-                    pipeline_id=queued_pipeline.pipeline_id,
-                    event='finish',
-                    success=False,
-                    errors=[
-                        'Dependency unsuccessful. '
-                        'Cannot run until dependency "{}" is successfully'
-                        'executed'.format(pipeline_id)
-                    ]
-                )
-                update(content, registry)
+                cb(queued_pipeline.pipeline_id, 
+                   'FAILED',
+                   errors=[
+                    'Dependency unsuccessful. '
+                    'Cannot run until dependency "{}" is successfully'
+                    'executed'.format(pipeline_id)
+                   ])

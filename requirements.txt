@@ -1,6 +1,8 @@
 https://github.com/datahq/auth/archive/master.zip
 https://github.com/datahq/events/archive/master.zip
 https://github.com/datahq/planner/archive/master.zip
+https://github.com/datahq/assembler/archive/master.zip
+https://github.com/datahq/filemanager/archive/master.zip
 boto3
 cryptography
 flask
@@ -10,3 +12,7 @@ psycopg2
 pyjwt
 requests
 tableschema-elasticsearch<1.0
+dpp-runner>=0.0.6
+datapackage-pipelines>=1.6.7
+datapackage-pipelines-aws>=0.0.20
+goodtables>=1.5.1
