@@ -102,7 +102,7 @@ state definition:
 
 #### Body
 
-A valid spec in JSON form. You can find example Flow-Spec in README of [planer API](https://github.com/datahq/planner/commit/d4dbc6bbd4d215ed1617969e3a502953b6b62910)
+A valid spec in JSON form. You can find example Flow-Spec in README of [planer API](https://github.com/datahq/planner/)
 
 #### Response
 
