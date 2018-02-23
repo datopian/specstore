@@ -36,12 +36,12 @@ def update(payload, registry):
     success = payload.get('success')
     stats = payload.get('stats', {})
     if success is True:
-        state = 'SUCCESS' 
+        state = 'SUCCESS'
     elif success is False:
         state = 'FAILED'
     else:
-        state = 'INPROGRESS' 
-    errors = payload.get('errors', [])        
+        state = 'INPROGRESS'
+    errors = payload.get('errors', [])
     return cb(pipeline_id, state, errors=errors, stats=stats)
 
 def generate_token(owner):
@@ -134,14 +134,14 @@ def full_registry_with_deps():
     r.save_pipeline(dict(
         pipeline_id='me/id:zip',
         flow_id='me/id/1',
-        pipeline_details={'dependencies': [{'pipeline': 'me/id:csv'}]},
+        pipeline_details={'dependencies': [{'pipeline': './me/id:csv'}]},
         status='pending',
         logs=[],
         title='Creating ZIP'))
     r.save_pipeline(dict(
         pipeline_id='me/id:preview',
         flow_id='me/id/1',
-        pipeline_details={'dependencies': [{'pipeline': 'me/id:json'}]},
+        pipeline_details={'dependencies': [{'pipeline': './me/id:json'}]},
         status='pending',
         logs=[],
         title='Generating Preview'))
@@ -149,10 +149,10 @@ def full_registry_with_deps():
         pipeline_id='me/id',
         flow_id='me/id/1',
         pipeline_details={'dependencies': [
-            {'pipeline': 'me/id:csv'},
-            {'pipeline': 'me/id:json'},
-            {'pipeline': 'me/id:preview'},
-            {'pipeline': 'me/id:zip'}]},
+            {'pipeline': './me/id:csv'},
+            {'pipeline': './me/id:json'},
+            {'pipeline': './me/id:preview'},
+            {'pipeline': './me/id:zip'}]},
         status='pending',
         logs=[],
         title='Creating Package'))

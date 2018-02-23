@@ -70,7 +70,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             registry.save_pipeline(doc)
 
         runner.start(None, yaml.dump(pipeline_spec).encode('utf-8'),
-                     status_cb=PipelineStatusCallback(registry), verbosity=1)
+                     status_cb=PipelineStatusCallback(registry))
     else:
         errors.extend(schedule_errors)
     return dataset_id, flow_id, errors
@@ -126,9 +126,7 @@ class PipelineStatusCallback:
         now = datetime.datetime.now()
         registry = self.registry
 
-        pipeline_id = pipeline_id
-        if pipeline_id.startswith('./'):
-            pipeline_id = pipeline_id[2:]
+        pipeline_id = pipeline_id.lstrip('./')
 
         errors = errors
         if state in ('SUCCESS', 'FAILED'):
@@ -278,7 +276,7 @@ def update_dependants(flow_id, pipeline_id, registry):
     for queued_pipeline in \
         registry.list_pipelines_by_flow_and_status(flow_id):
         for dep in queued_pipeline.pipeline_details.get('dependencies', []):
-            if dep['pipeline'] == pipeline_id:
+            if dep['pipeline'].lstrip('./') == pipeline_id:
                 cb(queued_pipeline.pipeline_id,
                    'FAILED',
                    errors=[
