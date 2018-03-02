@@ -221,9 +221,9 @@ class PipelineStatusCallback:
 
             if flow_status == STATE_SUCCESS or no_succesful_revision:
                 descriptor : dict = get_descriptor(flow_id)
-                if no_succesful_revision and descriptor['datahub'].get('findability') == 'published':
-                    descriptor['datahub']['findability'] = 'unlisted'
                 if descriptor is not None:
+                    if no_succesful_revision and descriptor['datahub'].get('findability') == 'published':
+                        descriptor['datahub']['findability'] = 'unlisted'
                     send_dataset(
                         descriptor.get('id'),
                         descriptor.get('name'),
