@@ -216,9 +216,14 @@ class PipelineStatusCallback:
 
                     }       # Other payload
                 )
-            if flow_status == STATE_SUCCESS:
+
+            no_succesful_revision = registry.get_revision(revision['dataset_id'], 'successful') is None
+
+            if flow_status == STATE_SUCCESS or no_succesful_revision:
                 descriptor : dict = get_descriptor(flow_id)
                 if descriptor is not None:
+                    if no_succesful_revision and descriptor['datahub'].get('findability') == 'published':
+                        descriptor['datahub']['findability'] = 'unlisted'
                     send_dataset(
                         descriptor.get('id'),
                         descriptor.get('name'),

@@ -502,6 +502,19 @@ def test_update_running(full_registry):
     assert revision['pipelines']['me/id']['title'] == 'Creating Package'
 
 def test_update_fail(full_registry):
+    datapackage= {
+        "id": "datahub/dataset",
+        "name": "testing-dataset-failed",
+        "title": "Testing Dataset",
+        "description": "Test description",
+        "datahub": {"owner": "owner", "stats": {"bytes": 1}, "findability": "published"}
+    }
+    s3 = get_s3_client()
+    s3.put_object(
+        Bucket=os.environ['PKGSTORE_BUCKET'],
+        Key='me/id/1/datapackage.json',
+        Body=json.dumps(datapackage))
+
     payload = {
         "pipeline_id": "me/id",
         "event": "progress",
@@ -535,6 +548,34 @@ def test_update_fail(full_registry):
     assert revision['pipelines']['me/id']['stats'] == {}
     assert revision['pipelines']['me/id']['error_log'] == ['error']
     assert revision['pipelines']['me/id']['title'] == 'Creating Package'
+
+    time.sleep(5)
+    res = requests.get('http://localhost:9200/datahub/_search')
+    assert res.status_code == 200
+
+    meta = res.json()
+    hits = [hit['_source'] for hit in meta['hits']['hits']
+        if hit['_source']['datapackage']['name'] == 'testing-dataset-failed']
+
+    assert len(hits) == 1
+
+    exp = {
+        "id": "datahub/dataset",
+        "name": "testing-dataset-failed",
+        "title": "Testing Dataset",
+        "description": "Test description",
+        "datahub": {"owner": "owner", "stats": {"bytes": 1},"findability": "unlisted"},
+        "datapackage": {
+            "id": "datahub/dataset",
+            "name": "testing-dataset-failed",
+            "title": "Testing Dataset",
+            "description": "Test description",
+            "datahub": {"owner": "owner", "stats": {"bytes": 1}, "findability": "unlisted"}
+        }
+    }
+    print(hits[0])
+    print(exp)
+    assert hits[0] == exp
 
 
 def test_update_success(full_registry):
