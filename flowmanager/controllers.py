@@ -127,7 +127,8 @@ class PipelineStatusCallback:
         now = datetime.datetime.now()
         registry = self.registry
 
-        pipeline_id = pipeline_id.lstrip('./')
+        if pipeline_id.startswith('./'):
+            pipeline_id = pipeline_id[2:]
 
         errors = errors
         if state in ('SUCCESS', 'FAILED'):
@@ -154,6 +155,7 @@ class PipelineStatusCallback:
             updated_at=now
         )
         if registry.update_pipeline(pipeline_id, doc):
+            pipeline = registry.get_pipeline(pipeline_id)
             flow_id = registry.get_flow_id(pipeline_id)
             flow_status = registry.check_flow_status(flow_id)
 
@@ -172,7 +174,6 @@ class PipelineStatusCallback:
                 doc['logs'] = log
 
             rev = registry.get_revision_by_revision_id(flow_id)
-            pipeline = registry.get_pipeline(pipeline_id)
             pipelines = rev.get('pipelines')
             if pipelines is None:
                 pipelines = {}
