@@ -11,6 +11,8 @@ db_connection_string = os.environ.get('DATABASE_URL')
 # Datapackage Pipelines Module
 dpp_module = 'assembler'
 
+# log verbosity
+verbosity = int(os.environ.get('FLOWMANAGER_VERBOSITY', 0))
 
 # Extract values from spec
 def owner_getter(spec):

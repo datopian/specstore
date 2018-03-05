@@ -14,6 +14,7 @@ from dpp_runner.lib import DppRunner
 from .schedules import parse_schedule
 from .config import dpp_module
 from .config import dataset_getter, owner_getter, update_time_setter
+from .config import verbosity
 from .datasets import send_dataset
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
 from .models import get_descriptor
@@ -70,7 +71,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             registry.save_pipeline(doc)
 
         runner.start(None, yaml.dump(pipeline_spec).encode('utf-8'),
-                     status_cb=PipelineStatusCallback(registry))
+                     status_cb=PipelineStatusCallback(registry), verbosity=verbosity)
     else:
         errors.extend(schedule_errors)
     return dataset_id, flow_id, errors
