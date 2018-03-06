@@ -14,6 +14,7 @@ from dpp_runner.lib import DppRunner
 from .schedules import parse_schedule
 from .config import dpp_module
 from .config import dataset_getter, owner_getter, update_time_setter
+from .config import verbosity
 from .datasets import send_dataset
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
 from .models import get_descriptor
@@ -29,7 +30,7 @@ CONFIGS = {'allowed_types': [
     'original'
 ]}
 
-runner = DppRunner()
+runner = DppRunner(max_workers=3)
 
 
 def _internal_upload(owner, contents, registry, config=CONFIGS):
@@ -71,7 +72,7 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
             registry.save_pipeline(doc)
 
         runner.start(None, yaml.dump(pipeline_spec).encode('utf-8'),
-                     status_cb=PipelineStatusCallback(registry))
+                     status_cb=PipelineStatusCallback(registry), verbosity=verbosity)
     else:
         errors.extend(schedule_errors)
     return dataset_id, flow_id, errors
@@ -127,7 +128,8 @@ class PipelineStatusCallback:
         now = datetime.datetime.now()
         registry = self.registry
 
-        pipeline_id = pipeline_id.lstrip('./')
+        if pipeline_id.startswith('./'):
+            pipeline_id = pipeline_id[2:]
 
         errors = errors
         if state in ('SUCCESS', 'FAILED'):
@@ -154,6 +156,7 @@ class PipelineStatusCallback:
             updated_at=now
         )
         if registry.update_pipeline(pipeline_id, doc):
+            pipeline = registry.get_pipeline(pipeline_id)
             flow_id = registry.get_flow_id(pipeline_id)
             flow_status = registry.check_flow_status(flow_id)
 
@@ -172,7 +175,6 @@ class PipelineStatusCallback:
                 doc['logs'] = log
 
             rev = registry.get_revision_by_revision_id(flow_id)
-            pipeline = registry.get_pipeline(pipeline_id)
             pipelines = rev.get('pipelines')
             if pipelines is None:
                 pipelines = {}
