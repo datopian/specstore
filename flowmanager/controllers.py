@@ -25,7 +25,8 @@ CONFIGS = {'allowed_types': [
     'derived/zip',
     'derived/preview',
     'source/tabular',
-    'source/non-tabular'
+    'source/non-tabular',
+    'original'
 ]}
 
 runner = DppRunner()
