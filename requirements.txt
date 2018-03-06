@@ -12,7 +12,7 @@ psycopg2
 pyjwt
 requests
 tableschema-elasticsearch<1.0
-dpp-runner>=0.0.6
+dpp-runner>=0.0.7
 datapackage-pipelines>=1.6.11
 datapackage-pipelines-aws>=0.0.20
 goodtables>=1.5.1

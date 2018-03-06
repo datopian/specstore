@@ -29,7 +29,7 @@ CONFIGS = {'allowed_types': [
     'source/non-tabular'
 ]}
 
-runner = DppRunner()
+runner = DppRunner(max_workers=3)
 
 
 def _internal_upload(owner, contents, registry, config=CONFIGS):
