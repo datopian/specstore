@@ -65,8 +65,8 @@ def empty_registry():
 @pytest.fixture
 def full_registry():
     r = FlowRegistry('sqlite://')
-    r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
-    r.save_dataset(dict(identifier='you/id', owner='you', spec=spec, updated_at=now))
+    r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now, created_at=now))
+    r.save_dataset(dict(identifier='you/id', owner='you', spec=spec, updated_at=now, created_at=now))
     r.save_dataset_revision(dict(
         revision_id='me/id/1',
         dataset_id='me/id',
@@ -408,16 +408,18 @@ def test_upload_new(empty_registry: FlowRegistry):
         first = specs[0]
         assert first.owner == 'me'
         assert first.identifier == 'me/id'
+        # create_time is set to meta only after it's created. So it's not present in DB
+        del spec['meta']['create_time']
         assert first.spec == spec
         revision = empty_registry.get_revision('me/id')
         assert revision['revision'] == 1
         assert revision['status'] == 'pending'
         pipelines = list(empty_registry.list_pipelines_by_id('me/id/1'))
-        assert len(pipelines) == 7
+        assert len(pipelines) == 8
         pipeline = pipelines[0]
         assert pipeline.status == 'pending'
         pipelines = list(empty_registry.list_pipelines())
-        assert len(pipelines) == 7
+        assert len(pipelines) == 8
 
 
 def test_upload_existing(full_registry):
@@ -434,19 +436,20 @@ def test_upload_existing(full_registry):
         first = specs[0]
         assert first.owner == 'me'
         assert first.identifier == 'me/id'
+        del spec['meta']['create_time']
         assert first.spec == spec
         revision = full_registry.get_revision('me/id')
         assert revision['revision'] == 2
         assert revision['status'] == 'pending'
         pipelines = list(full_registry.list_pipelines_by_id('me/id/2'))
-        assert len(pipelines) == 7
+        assert len(pipelines) == 8
         pipeline = pipelines[0]
         assert pipeline.status == 'pending'
         ## make pipelines for previous revision are still there
         pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
         assert len(pipelines) == 2
         pipelines = list(full_registry.list_pipelines())
-        assert len(pipelines) == 9
+        assert len(pipelines) == 10
 
 
 def test_upload_append(full_registry):
@@ -464,6 +467,7 @@ def test_upload_append(full_registry):
 
         assert first.owner == 'me2'
         assert first.identifier == 'me2/id2'
+        del spec2['meta']['create_time']
         assert first.spec == spec2
         second = specs[0]
         assert second.owner == 'me'
@@ -474,11 +478,11 @@ def test_upload_append(full_registry):
         assert revision['revision'] == 1
         assert revision['status'] == 'pending'
         pipelines = list(full_registry.list_pipelines_by_id('me2/id2/1'))
-        assert len(pipelines) == 7
+        assert len(pipelines) == 8
         pipelines = list(full_registry.list_pipelines_by_id('me/id/1'))
         assert len(pipelines) == 2
         pipelines = list(full_registry.list_pipelines())
-        assert len(pipelines) == 9
+        assert len(pipelines) == 10
 
 def test_update_running(full_registry):
     payload = {
