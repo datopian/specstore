@@ -127,6 +127,7 @@ class FlowRegistry:
         with self.session_scope() as session:
             dataset = Dataset(**dataset)
             session.add(dataset)
+            return FlowRegistry.object_as_dict(dataset)
 
     def get_dataset(self, identifier):
         with self.session_scope() as session:
@@ -153,6 +154,7 @@ class FlowRegistry:
                 for key, value in doc.items():
                     setattr(ret, key, value)
             session.commit()
+            return FlowRegistry.object_as_dict(ret)
 
     def create_or_update_dataset(self, identifier, owner, spec, updated_at):
         dataset = self.get_dataset(identifier)
@@ -164,9 +166,9 @@ class FlowRegistry:
         }
         if dataset is None:
             document['created_at'] = updated_at
-            self.save_dataset(document)
+            return self.save_dataset(document)
         else:
-            self.update_dataset(identifier, document)
+            return self.update_dataset(identifier, document)
 
     def update_dataset_schedule(self, identifier, period_in_seconds, now):
         dataset = self.get_dataset(identifier)

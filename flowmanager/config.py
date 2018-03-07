@@ -25,3 +25,6 @@ def dataset_getter(spec):
 
 def update_time_setter(spec, now: datetime.datetime):
     spec['meta']['update_time'] = now.isoformat()
+
+def create_time_setter(spec, create: datetime.datetime):
+    spec['meta']['create_time'] = create.isoformat()

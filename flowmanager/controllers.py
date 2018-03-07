@@ -13,7 +13,7 @@ from dpp_runner.lib import DppRunner
 
 from .schedules import parse_schedule
 from .config import dpp_module
-from .config import dataset_getter, owner_getter, update_time_setter
+from .config import dataset_getter, owner_getter, update_time_setter, create_time_setter
 from .config import verbosity
 from .datasets import send_dataset
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
@@ -41,8 +41,8 @@ def _internal_upload(owner, contents, registry, config=CONFIGS):
 
     flow_id = None
     dataset_id = registry.format_identifier(owner, dataset_name)
-    registry.create_or_update_dataset(
-        dataset_id, owner, contents, now)
+    dataset_obj = registry.create_or_update_dataset(dataset_id, owner, contents, now)
+    create_time_setter(contents, dataset_obj.get('created_at'))
     period_in_seconds, schedule_errors = parse_schedule(contents)
     if len(schedule_errors) == 0:
         registry.update_dataset_schedule(dataset_id, period_in_seconds, now)
