@@ -19,11 +19,11 @@ SCHEMA = {
     'fields': [
         {'name': 'id', 'type': 'string', 'analyzer': 'keyword'},
         {'name': 'name', 'type': 'string', 'analyzer': 'keyword'},
-        {'name': 'title', 'type': 'string', 'analyzer': 'simple'},
-        {'name': 'description', 'type': 'string', 'analyzer': 'standard'},
+        {'name': 'title', 'type': 'string', 'analyzer': 'english'},
+        {'name': 'description', 'type': 'string', 'analyzer': 'english'},
         {'name': 'datapackage', 'type': 'object', 'es:schema': {
             'fields': [
-                {'name': 'readme', 'type': 'string', 'analyzer': 'standard'}
+                {'name': 'readme', 'type': 'string', 'analyzer': 'english'}
             ]
         }},
         {'name': 'datahub', 'type': 'object',
