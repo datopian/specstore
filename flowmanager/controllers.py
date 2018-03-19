@@ -93,7 +93,9 @@ def upload(token, contents,
                 limits = permissions.get('permissions')
                 max_datasets = limits.get('max_dataset_num', 0)
                 current_datasets = registry.num_datasets_for_owner(owner)
-                if current_datasets < max_datasets:
+                dataset_id = registry.format_identifier(owner, dataset_getter(contents))
+                is_revision = registry.get_dataset(dataset_id) is not None
+                if current_datasets < max_datasets or is_revision:
                     try:
                         dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
                     except ValueError as e:
