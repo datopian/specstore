@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 
@@ -44,11 +45,11 @@ def update(payload, registry):
     errors = payload.get('errors', [])
     return cb(pipeline_id, state, errors=errors, stats=stats)
 
-def generate_token(owner):
+def generate_token(owner, max_datasets=9):
     ret = {
         'userid': owner,
         'permissions': {
-            'max_dataset_num': 9
+            'max_dataset_num': max_datasets
         },
         'service': 'source'
     }
@@ -483,6 +484,27 @@ def test_upload_append(full_registry):
         assert len(pipelines) == 2
         pipelines = list(full_registry.list_pipelines())
         assert len(pipelines) == 9
+
+
+def test_allows_upload_if_exceeds_limit_but_is_revision(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me', 1)
+        ret = upload(token, spec, full_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['dataset_id'] == 'me/id'
+        assert ret['flow_id'] == 'me/id/2'
+        assert ret['errors'] == []
+
+
+def test_not_allows_upload_if_exceeds_limit(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me', 1)
+        new_spec = copy.deepcopy(spec)
+        new_spec['meta']['dataset'] = 'new'
+        ret = upload(token, new_spec, full_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['errors'] == ['Max datasets for user exceeded plan limit (1)']
+
 
 def test_update_running(full_registry):
     payload = {
