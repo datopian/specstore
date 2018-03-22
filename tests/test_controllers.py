@@ -45,11 +45,13 @@ def update(payload, registry):
     errors = payload.get('errors', [])
     return cb(pipeline_id, state, errors=errors, stats=stats)
 
-def generate_token(owner, max_datasets=9):
+def generate_token(owner, max_datasets=9, max_storage=10, max_private_storage=10):
     ret = {
         'userid': owner,
         'permissions': {
-            'max_dataset_num': max_datasets
+            'max_dataset_num': max_datasets,
+            'max_private_storage_mb': max_private_storage,
+            'max_public_storage_mb': max_storage
         },
         'service': 'source'
     }
@@ -60,12 +62,24 @@ def generate_token(owner, max_datasets=9):
 @pytest.fixture
 def empty_registry():
     r = FlowRegistry('sqlite://')
+    fm = r.file_manager()
+    fm.init_db()
     return r
 
 
 @pytest.fixture
 def full_registry():
     r = FlowRegistry('sqlite://')
+    fm = r.file_manager()
+    fm.init_db()
+    fm.add_file(
+        'testing.bucket', 'my/file.ext', 'unlisted',
+        'me', 'me', 'id', 'me/id/1', 10, now
+    )
+    fm.add_file(
+        'testing.bucket', 'my/file.ext', 'private',
+        'me', 'me', 'id', 'me/id/1', 5, now
+    )
     r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now, created_at=now))
     r.save_dataset(dict(identifier='you/id', owner='you', spec=spec, updated_at=now, created_at=now))
     r.save_dataset_revision(dict(
@@ -111,6 +125,8 @@ def full_registry():
 @pytest.fixture
 def full_registry_with_deps():
     r = FlowRegistry('sqlite://')
+    fm = r.file_manager()
+    fm.init_db()
     r.save_dataset(dict(identifier='me/id', owner='me', spec=spec, updated_at=now))
     r.save_dataset_revision(dict(
         revision_id='me/id/1',
@@ -506,6 +522,27 @@ def test_not_allows_upload_if_exceeds_limit(full_registry):
         assert ret['errors'] == ['Max datasets for user exceeded plan limit (1)']
 
 
+def test_not_allows_upload_if_exceeds_space_limit(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me', 10, 1, 1)
+        new_spec = copy.deepcopy(spec)
+        new_spec['meta']['dataset'] = 'new'
+        ret = upload(token, new_spec, full_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['errors'] == ['Max storage for user exceeded plan limit (1)']
+
+
+def test_not_allows_upload_if_exceeds_private_space_limit(full_registry):
+    with requests_mock.Mocker() as mock:
+        mock.get('http://dpp/api/refresh', status_code=200)
+        token = generate_token('me', 10, 11, 1)
+        new_spec = copy.deepcopy(spec)
+        new_spec['meta']['dataset'] = 'new'
+        new_spec['meta']['findability'] = 'private'
+        ret = upload(token, new_spec, full_registry, auth.lib.Verifyer(public_key=public_key))
+        assert ret['errors'] == ['Max private storage for user exceeded plan limit (1)']
+
+
 def test_update_running(full_registry):
     payload = {
       "pipeline_id": "me/id",
@@ -599,8 +636,6 @@ def test_update_fail(full_registry):
             "datahub": {"owner": "owner", "stats": {"bytes": 1}, "findability": "unlisted"}
         }
     }
-    print(hits[0])
-    print(exp)
     assert hits[0] == exp
 
 

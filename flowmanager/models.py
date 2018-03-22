@@ -15,6 +15,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Unicode, String, Integer, create_engine
 from sqlalchemy.orm import sessionmaker
 
+from filemanager.models import FileManager
 # ## SQL DB
 from flowmanager.schedules import calculate_new_schedule
 
@@ -334,6 +335,10 @@ class FlowRegistry:
                 flow_id=flow_id).delete()
             session.commit()
 
+    # ## Storage
+    def file_manager(self):
+        fm = FileManager(self._db_connection_string, engine=self.engine)
+        return fm
 
 # S3
 
