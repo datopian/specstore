@@ -22,6 +22,9 @@ def owner_getter(spec):
 def dataset_getter(spec):
     return spec.get('meta', {}).get('dataset')
 
+def findability_getter(spec):
+    return spec.get('meta', {}).get('findability')
+
 
 def update_time_setter(spec, now: datetime.datetime):
     spec['meta']['update_time'] = now.isoformat()

@@ -13,7 +13,7 @@ from dpp_runner.lib import DppRunner
 
 from .schedules import parse_schedule
 from .config import dpp_module
-from .config import dataset_getter, owner_getter, update_time_setter, create_time_setter
+from .config import dataset_getter, owner_getter, update_time_setter, create_time_setter, findability_getter
 from .config import verbosity
 from .datasets import send_dataset
 from .models import FlowRegistry, STATE_PENDING, STATE_SUCCESS, STATE_FAILED, STATE_RUNNING
@@ -91,19 +91,30 @@ def upload(token, contents,
             permissions = verifyer.extract_permissions(token)
             if permissions and permissions.get('userid') == owner:
                 limits = permissions.get('permissions')
+                is_private = findability_getter(contents) == 'private'
                 max_datasets = limits.get('max_dataset_num', 0)
+                max_storage = limits.get(
+                    'max_private_storage_mb' if is_private else 'max_public_storage_mb', 0
+                )
                 current_datasets = registry.num_datasets_for_owner(owner)
+                fm = registry.file_manager()
+                current_storage = fm.get_total_size_for_owner(
+                    owner, 'private' if is_private else None
+                )
                 dataset_id = registry.format_identifier(owner, dataset_getter(contents))
                 is_revision = registry.get_dataset(dataset_id) is not None
-                if current_datasets < max_datasets or is_revision:
+                if not (current_datasets < max_datasets or is_revision):
+                    errors.append('Max datasets for user exceeded plan limit (%d)' % max_datasets)
+                elif max_storage < current_storage:
+                    errors.append('Max %sstorage for user exceeded plan limit (%d)'  % (
+                        'private ' if is_private else '', max_storage))
+                else:
                     try:
                         dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
                     except ValueError as e:
                         errors.append('Validation failed for contents')
                     except Exception as error:
                         errors.append('Unexpected error: %s' % error)
-                else:
-                    errors.append('Max datasets for user exceeded plan limit (%d)' % max_datasets)
             else:
                 errors.append('No token or token not authorised for owner')
         else:

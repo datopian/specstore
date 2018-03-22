@@ -16,6 +16,9 @@ def make_blueprint():
 
     verifyer = Verifyer(auth_endpoint=f'http://{auth_server}/auth/public-key')
     registry = FlowRegistry(db_connection_string)
+    # filemanager
+    fm = registry.file_manager()
+    fm.init_db()
 
     # Create instance
     blueprint = Blueprint('flowmanager', 'flowmanager')
