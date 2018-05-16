@@ -23,6 +23,7 @@ env:
     - DEPLOY_GIT_USER=dhq-deployer
 
 install:
+  - pip install google-compute-engine
   - make install
   - curl -s https://raw.githubusercontent.com/datahq/deploy/master/apps_travis_script.sh > .travis.sh
   - bash .travis.sh script
