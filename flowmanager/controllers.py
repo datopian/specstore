@@ -98,7 +98,7 @@ def upload(token, contents,
                 if current_datasets < max_datasets or is_revision:
                     try:
                         dataset_id, flow_id, errors = _internal_upload(owner, contents, registry, config=config)
-                    except ValueError as e:
+                    except ValueError:
                         errors.append('Validation failed for contents')
                     except Exception as error:
                         errors.append('Unexpected error: %s' % error)
