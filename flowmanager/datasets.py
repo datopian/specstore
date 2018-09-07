@@ -29,7 +29,7 @@ SCHEMA = {
         {'name': 'datahub', 'type': 'object',
          'es:schema': {
              'fields': [
-                 {'name': 'owner', 'type': 'string', 'analyzer': 'keyword'},
+                 {'name': 'owner', 'type': 'string', 'analyzer': 'english'},
                  {'name': 'ownerid', 'type': 'string', 'analyzer': 'keyword'},
                  {'name': 'findability', 'type': 'string', 'analyzer': 'keyword'},
                  {'name': 'flowid', 'type': 'string', 'analyzer': 'keyword'},
