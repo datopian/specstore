@@ -196,10 +196,9 @@ class PipelineStatusCallback:
             )
             doc['pipelines'] = pipelines
             revision = registry.update_revision(flow_id, doc)
+            dataset = registry.get_dataset(revision['dataset_id'])
             if (flow_status != STATE_PENDING) and (flow_status != STATE_RUNNING):
                 registry.delete_pipelines(flow_id)
-
-                dataset = registry.get_dataset(revision['dataset_id'])
                 findability = \
                     flow_status == STATE_SUCCESS and \
                     dataset['spec']['meta']['findability'] == 'published'
@@ -235,7 +234,8 @@ class PipelineStatusCallback:
                         descriptor.get('title'),
                         descriptor.get('description'),
                         descriptor.get('datahub'),
-                        descriptor)
+                        descriptor,
+                        dataset.get('certified') or False)
 
             return {
                 'status': flow_status,

@@ -594,6 +594,7 @@ def test_update_fail(full_registry):
         "title": "Testing Dataset",
         "description": "Test description",
         "datahub": {"owner": "owner", "stats": {"bytes": 1},"findability": "unlisted"},
+        "certified": False,
         "datapackage": {
             "id": "datahub/dataset",
             "name": "testing-dataset-failed",
@@ -602,8 +603,6 @@ def test_update_fail(full_registry):
             "datahub": {"owner": "owner", "stats": {"bytes": 1}, "findability": "unlisted"}
         }
     }
-    print(hits[0])
-    print(exp)
     assert hits[0] == exp
 
 
@@ -678,6 +677,7 @@ def test_update_success(full_registry):
         "title": "Testing Dataset",
         "description": "Test description",
         "datahub": {"owner": "owner", "stats": {"bytes": 1}},
+        "certified": False,
         "datapackage": {
             "id": "datahub/dataset",
             "name": "testing-dataset",
