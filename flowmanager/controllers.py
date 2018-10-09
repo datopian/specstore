@@ -273,7 +273,8 @@ def info(owner, dataset, revision_id, registry: FlowRegistry):
         error_log=revision['errors'],
         logs=revision['logs'],
         stats=revision['stats'],
-        pipelines=pipelines if pipelines is not None else {}
+        pipelines=pipelines if pipelines is not None else {},
+        certified=spec.get('certified')
     )
     return resp
 
