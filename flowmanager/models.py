@@ -12,7 +12,7 @@ from sqlalchemy import DateTime, types
 from sqlalchemy import inspect, desc
 from sqlalchemy.ext.declarative import declarative_base
 
-from sqlalchemy import Column, Unicode, String, Integer, create_engine
+from sqlalchemy import Column, Unicode, String, Integer, create_engine, Boolean
 from sqlalchemy.orm import sessionmaker
 
 # ## SQL DB
@@ -51,6 +51,7 @@ class Dataset(Base):
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
     scheduled_for = Column(DateTime, index=True)
+    certified = Column(Boolean, default=False)
 
 
 class DatasetRevision(Base):

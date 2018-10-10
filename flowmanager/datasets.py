@@ -21,6 +21,7 @@ SCHEMA = {
         {'name': 'name', 'type': 'string', 'analyzer': 'keyword'},
         {'name': 'title', 'type': 'string', 'analyzer': 'english'},
         {'name': 'description', 'type': 'string', 'analyzer': 'english'},
+        {'name': 'certified', 'type': 'boolean'},
         {'name': 'datapackage', 'type': 'object', 'es:schema': {
             'fields': [
                 {'name': 'readme', 'type': 'string', 'analyzer': 'english'}
@@ -57,14 +58,15 @@ class AnalyzerForMappingGenerator(MappingGenerator):
 
 
 def _send(es: elasticsearch.Elasticsearch,
-                            id, name, title, description, datahub, datapackage):
+        id, name, title, description, datahub, datapackage, certified=False):
     body = {
         "id": id,
         "name": name,
         "title": title,
         "description": description,
         "datahub": datahub,
-        "datapackage": datapackage
+        "datapackage": datapackage,
+        "certified": certified
     }
 
     primary_key = SCHEMA['primaryKey']

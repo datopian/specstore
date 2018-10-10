@@ -180,7 +180,8 @@ def test_info_found_has_pipeline(full_registry):
         error_log=None,
         logs=[],
         stats=None,
-        pipelines={}
+        pipelines={},
+        certified=False
     )
     ret = info('me', 'id', 1, full_registry)
     assert ret == response
@@ -196,7 +197,8 @@ def test_info_found_has_pipeline_current(full_registry):
         'error_log': None,
         'spec_contents': spec,
         'stats': None,
-        'pipelines': {}
+        'pipelines': {},
+        'certified': False
     }
 
 def test_grabs_info_for_given_revision_id(full_registry):
@@ -209,9 +211,8 @@ def test_grabs_info_for_given_revision_id(full_registry):
         'error_log': None,
         'spec_contents': spec,
         'stats': None,
-        'pipelines': {}
-
-
+        'pipelines': {},
+        'certified': False
     }
 
 def test_grabs_info_for_latest(full_registry):
@@ -224,7 +225,8 @@ def test_grabs_info_for_latest(full_registry):
         'error_log': None,
         'spec_contents': spec,
         'stats': None,
-        'pipelines': {}
+        'pipelines': {},
+        'certified': False
     }
 
 def test_grabs_info_for_latest_successful(full_registry):
@@ -237,7 +239,8 @@ def test_grabs_info_for_latest_successful(full_registry):
         'error_log': None,
         'spec_contents': spec,
         'stats': None,
-        'pipelines': {}
+        'pipelines': {},
+        'certified': False
     }
 
 
@@ -591,6 +594,7 @@ def test_update_fail(full_registry):
         "title": "Testing Dataset",
         "description": "Test description",
         "datahub": {"owner": "owner", "stats": {"bytes": 1},"findability": "unlisted"},
+        "certified": False,
         "datapackage": {
             "id": "datahub/dataset",
             "name": "testing-dataset-failed",
@@ -599,8 +603,6 @@ def test_update_fail(full_registry):
             "datahub": {"owner": "owner", "stats": {"bytes": 1}, "findability": "unlisted"}
         }
     }
-    print(hits[0])
-    print(exp)
     assert hits[0] == exp
 
 
@@ -675,6 +677,7 @@ def test_update_success(full_registry):
         "title": "Testing Dataset",
         "description": "Test description",
         "datahub": {"owner": "owner", "stats": {"bytes": 1}},
+        "certified": False,
         "datapackage": {
             "id": "datahub/dataset",
             "name": "testing-dataset",
