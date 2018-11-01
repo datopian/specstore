@@ -6,3 +6,5 @@ pytest
 pytest-cov
 requests-mock==1.3.0
 moto
+# Version incompatibility for moto https://github.com/spulec/moto/issues/1793#issuecomment-416942466 
+boto3<1.8,>=1.6.16
