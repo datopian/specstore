@@ -225,7 +225,6 @@ class PipelineStatusCallback:
                     }       # Other payload
                 )
             if flow_status == STATE_FAILED:
-                print('here')
                 statuspage.on_incident('Pipelines Failed', dataset['spec']['meta']['owner'], errors)
 
             no_succesful_revision = registry.get_revision(revision['dataset_id'], 'successful') is None
