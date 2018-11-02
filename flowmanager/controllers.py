@@ -113,7 +113,9 @@ def upload(token, contents,
         errors.append('Received empty contents (make sure your content-type is correct)')
 
     if len(errors) and contents is not None:
-        statuspage.on_incident('Failed To Start Pipelines', contents.get('meta', {}).get('owner'), errors)
+        statuspage.on_incident(
+            'Failed To Start Pipelines for %s' % contents.get('meta', {}).get('dataset'),
+            contents.get('meta', {}).get('owner'), errors)
 
     return {
         'success': len(errors) == 0,
@@ -225,7 +227,9 @@ class PipelineStatusCallback:
                     }       # Other payload
                 )
             if flow_status == STATE_FAILED:
-                statuspage.on_incident('Pipelines Failed', dataset['spec']['meta']['owner'], errors)
+                statuspage.on_incident(
+                    'Pipelines Failed for %s' % dataset['spec']['meta']['dataset'],
+                    dataset['spec']['meta']['owner'], errors)
 
             no_succesful_revision = registry.get_revision(revision['dataset_id'], 'successful') is None
 
