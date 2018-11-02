@@ -8,6 +8,7 @@ import yaml
 
 import planner
 import events
+from datahub_emails import api as statuspage
 from werkzeug.exceptions import NotFound
 from dpp_runner.lib import DppRunner
 
@@ -110,6 +111,9 @@ def upload(token, contents,
             errors.append('Missing owner in spec')
     else:
         errors.append('Received empty contents (make sure your content-type is correct)')
+
+    if len(errors) and contents is not None:
+        statuspage.on_incident('Failed To Start Pipelines', contents.get('meta', {}).get('owner'), errors)
 
     return {
         'success': len(errors) == 0,
@@ -220,6 +224,8 @@ class PipelineStatusCallback:
 
                     }       # Other payload
                 )
+            if flow_status == STATE_FAILED:
+                statuspage.on_incident('Pipelines Failed', dataset['spec']['meta']['owner'], errors)
 
             no_succesful_revision = registry.get_revision(revision['dataset_id'], 'successful') is None
 

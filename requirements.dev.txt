@@ -1,4 +1,25 @@
--r requirements.txt
+https://github.com/datahq/auth/archive/master.zip
+https://github.com/datahq/events/archive/master.zip
+https://github.com/datahq/planner/archive/master.zip
+https://github.com/datahq/filemanager/archive/master.zip
+https://github.com/datahq/assembler/archive/master.zip
+https://github.com/datahq/datahub-emails/archive/master.zip
+# Version incompatibility for moto https://github.com/spulec/moto/issues/1793#issuecomment-416942466
+boto3<1.8,>=1.6.16
+cryptography
+flask
+flask-cors
+flask-jsonpify
+psycopg2
+pyjwt
+requests
+tableschema-elasticsearch<1.0
+dpp-runner>=0.0.10
+datapackage-pipelines>=1.6.12,<1.7
+datapackage-pipelines-aws>=0.0.23
+goodtables==1.5.1
+click>=6.0,<7.0
+# dev
 pylama
 coverage
 coveralls

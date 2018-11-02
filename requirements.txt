@@ -3,6 +3,7 @@ https://github.com/datahq/events/archive/master.zip
 https://github.com/datahq/planner/archive/master.zip
 https://github.com/datahq/filemanager/archive/master.zip
 https://github.com/datahq/assembler/archive/master.zip
+https://github.com/datahq/datahub-emails/archive/master.zip
 boto3
 cryptography
 flask
